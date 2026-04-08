@@ -1,12 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class RegisterPage extends StatelessWidget {
+// 1. Ubah menjadi StatefulWidget agar Controller tidak ter-reset
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final Color primaryGreen = Colors.green[700]!;
+  State<RegisterPage> createState() => _RegisterPageState();
+}
 
+class _RegisterPageState extends State<RegisterPage> {
+  final Color primaryGreen = Colors.green[700]!;
+
+  // Pindahkan controller ke tingkat State
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController(); 
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _handleRegister() async {
+    String name = _nameController.text.trim();
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+    String confirmPassword = _confirmPasswordController.text.trim();
+
+    // Validasi sederhana
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Harap isi semua kolom')));
+      return;
+    }
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password dan Konfirmasi tidak cocok')),
+      );
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+        data: {'name': name},
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Pendaftaran Berhasil!')));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mendaftar: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -38,52 +104,51 @@ class RegisterPage extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // Input Nama Lengkap
+              // 2. Masukkan controller ke masing-masing input field
               _buildInputField(
                 label: 'Nama Lengkap',
                 hint: 'Masukkan nama lengkap',
                 icon: Icons.person_outline,
                 color: primaryGreen,
+                controller: _nameController,
               ),
               const SizedBox(height: 20),
 
-              // Input Email
               _buildInputField(
                 label: 'Email',
                 hint: 'Masukkan email aktif',
                 icon: Icons.email_outlined,
                 color: primaryGreen,
+                controller: _emailController,
               ),
               const SizedBox(height: 20),
 
-              // Input Password
               _buildInputField(
                 label: 'Password',
                 hint: 'Buat password minimal 6 karakter',
                 icon: Icons.lock_outline,
                 color: primaryGreen,
                 isPassword: true,
+                controller: _passwordController,
               ),
               const SizedBox(height: 20),
 
-              // Input Konfirmasi Password
+              // 3. Gunakan controller konfirmasi password
               _buildInputField(
                 label: 'Konfirmasi Password',
                 hint: 'Ulangi password Anda',
                 icon: Icons.lock_reset_outlined,
                 color: primaryGreen,
                 isPassword: true,
+                controller: _confirmPasswordController,
               ),
               const SizedBox(height: 40),
 
-              // Tombol Daftar
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Logika pendaftaran
-                  },
+                  onPressed: _handleRegister,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryGreen,
                     foregroundColor: Colors.white,
@@ -100,7 +165,6 @@ class RegisterPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Navigasi ke Login
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -125,12 +189,13 @@ class RegisterPage extends StatelessWidget {
     );
   }
 
-  // Helper Widget untuk merapikan kode TextField agar tidak duplikat
+  // Modifikasi: Tambahkan parameter TextEditingController
   Widget _buildInputField({
     required String label,
     required String hint,
     required IconData icon,
     required Color color,
+    required TextEditingController controller,
     bool isPassword = false,
   }) {
     return Column(
@@ -139,6 +204,7 @@ class RegisterPage extends StatelessWidget {
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
+          controller: controller, // Hubungkan controller ke widget TextField
           obscureText: isPassword,
           decoration: InputDecoration(
             hintText: hint,

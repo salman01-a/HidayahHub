@@ -1,12 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleLogin() async {
+    // ini harusnya email cuy bukan username za
+    String email = _usernameController.text.trim();
+    String password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Harap isi semua kolom')));
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      if (response.user != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login Berhasil!')));
+
+        // nanti tambah routes gw gak ngerti di flutter
+        // Navigator.pushReplacementNamed(context, '/home');
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Login gagal: ${e.message}')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      }
+    }
+  }
+
   Widget build(BuildContext context) {
     final Color primaryGreen = Colors.green[700]!;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -29,9 +85,8 @@ class LoginPage extends StatelessWidget {
               ),
               const SizedBox(height: 50),
 
-              // Input Username/Email
               Text(
-                'Username atau Email',
+                'Email',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[800],
@@ -39,15 +94,14 @@ class LoginPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                controller: _usernameController,
                 decoration: InputDecoration(
-                  hintText: 'Masukkan username/email',
+                  hintText: 'Email',
                   prefixIcon: Icon(Icons.email_outlined, color: primaryGreen),
-                  // Border saat aktif (terfokus) menggunakan warna hijau
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: primaryGreen, width: 2),
                   ),
-                  // Border saat tidak aktif
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.grey),
@@ -67,10 +121,11 @@ class LoginPage extends StatelessWidget {
               const SizedBox(height: 8),
               TextField(
                 obscureText: true,
+                controller: _passwordController,
                 decoration: InputDecoration(
                   hintText: 'Masukkan password Anda',
                   prefixIcon: Icon(Icons.lock_outline, color: primaryGreen),
-                  // Ikon untuk melihat password (visibility)
+
                   suffixIcon: Icon(
                     Icons.visibility_off_outlined,
                     color: primaryGreen.withOpacity(0.6),
@@ -106,7 +161,7 @@ class LoginPage extends StatelessWidget {
                 height: 55, // Tinggi tombol lebih nyaman ditekan
                 child: ElevatedButton(
                   onPressed: () {
-                    // Masukkan logika login Anda di sini
+                    _handleLogin();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
