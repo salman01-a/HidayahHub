@@ -192,26 +192,27 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
 
                         // Forgot Password
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {},
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                            child: const Text(
-                              'Lupa Password?',
-                              style: TextStyle(
-                                color: accentGold,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: TextButton(
+                        //     onPressed: () {},
+                        //     style: TextButton.styleFrom(
+                        //       padding: const EdgeInsets.symmetric(
+                        //         horizontal: 8,
+                        //         vertical: 4,
+                        //       ),
+                        //     ),
+                        //     child: const Text(
+                        //       'Lupa Password?',
+                        //       style: TextStyle(
+                        //         color: accentGold,
+                        //         fontWeight: FontWeight.w600,
+                        //         fontSize: 13,
+                        //       ),
+                        //     ),
+                        //   ),
+                        // ),
+                        
                         const SizedBox(height: 24),
 
                         // Login Button
