@@ -1,11 +1,6 @@
 import 'dart:async';
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common/sqlite_api.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../models/user.dart';
 
@@ -22,22 +17,14 @@ class DBHelper {
   }
 
   Future<Database> _initDB() async {
-    final factory = _databaseFactory;
-    final databasesPath = await factory.getDatabasesPath();
+    final databasesPath = await getDatabasesPath();
     final path = p.join(databasesPath, 'hidayahhub.db');
 
-    return await factory.openDatabase(
+    return await openDatabase(
       path,
-      options: OpenDatabaseOptions(version: 1, onCreate: _onCreate),
+      version: 1,
+      onCreate: _onCreate,
     );
-  }
-
-  DatabaseFactory get _databaseFactory {
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-      sqfliteFfiInit();
-      return databaseFactoryFfi;
-    }
-    return databaseFactory;
   }
 
   FutureOr<void> _onCreate(Database db, int version) async {
