@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../controllers/auth_controller.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -45,25 +45,15 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     setState(() => _isLoading = true);
-
-    try {
-      await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-        data: {'name': name},
-      );
-
-      if (mounted) {
-        _showSnackBar('Pendaftaran Berhasil!', isError: false);
-        Navigator.pop(context); // Kembali ke halaman login
-      }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar('Gagal mendaftar: ${e.toString()}');
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    final res = await AuthController.instance.register(name: name, email: email, password: password);
+    if (!mounted) return;
+    if (res['success'] == true) {
+      _showSnackBar(res['message'] ?? 'Pendaftaran Berhasil!', isError: false);
+      Navigator.pop(context);
+    } else {
+      _showSnackBar(res['message'] ?? 'Gagal mendaftar');
     }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   void _showSnackBar(String message, {bool isError = true}) {

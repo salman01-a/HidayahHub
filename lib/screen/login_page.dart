@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
+import '../controllers/auth_controller.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -33,23 +33,15 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      if (response.user != null && mounted) {
-        _showSnackBar('Selamat datang kembali!', isError: false);
-        // Navigator.pushReplacementNamed(context, '/home');
-      }
-    } on AuthException catch (e) {
-      if (mounted) _showSnackBar(e.message);
-    } catch (e) {
-      if (mounted) _showSnackBar('Terjadi kesalahan tidak terduga');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    final res = await AuthController.instance.login(email: email, password: password);
+    if (!mounted) return;
+    if (res['success'] == true) {
+      _showSnackBar(res['message'] ?? 'Selamat datang kembali!', isError: false);
+      // TODO: navigate to home
+    } else {
+      _showSnackBar(res['message'] ?? 'Gagal login');
     }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   void _showSnackBar(String message, {bool isError = true}) {
