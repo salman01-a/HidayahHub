@@ -30,6 +30,10 @@ class _LoginPageState extends State<LoginPage> {
       _showSnackBar('Harap isi semua kolom');
       return;
     }
+    if (!email.endsWith('@gmail.com')) {
+      _showSnackBar('Email harus menggunakan domain @gmail.com');
+      return;
+    }
 
     setState(() => _isLoading = true);
 

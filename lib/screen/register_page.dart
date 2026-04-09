@@ -39,6 +39,11 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    if (!email.endsWith('@gmail.com')) {
+      _showSnackBar('Email harus menggunakan domain @gmail.com');
+      return;
+    }
+
     if (password != confirmPassword) {
       _showSnackBar('Password dan Konfirmasi tidak cocok');
       return;
