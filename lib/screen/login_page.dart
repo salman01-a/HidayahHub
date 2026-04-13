@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_page.dart';
+import 'home_page.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginPage extends StatefulWidget {
@@ -41,7 +42,11 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
     if (res['success'] == true) {
       _showSnackBar(res['message'] ?? 'Selamat datang kembali!', isError: false);
-      // TODO: navigate to home
+      final user = res['user'];
+      final userName = user?.name as String? ?? 'User';
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomePage(userName: userName)),
+      );
     } else {
       _showSnackBar(res['message'] ?? 'Gagal login');
     }
