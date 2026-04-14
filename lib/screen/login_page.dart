@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'register_page.dart';
 import 'home_page.dart';
 import '../controllers/auth_controller.dart';
+import '../services/biometric_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,6 +14,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final BiometricService _biometricService = BiometricService();
   bool _isLoading = false; // Untuk indikator loading
   bool _obscurePassword = true; // Untuk toggle mata di password
 
@@ -38,10 +40,16 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final res = await AuthController.instance.login(email: email, password: password);
+    final res = await AuthController.instance.login(
+      email: email,
+      password: password,
+    );
     if (!mounted) return;
     if (res['success'] == true) {
-      _showSnackBar(res['message'] ?? 'Selamat datang kembali!', isError: false);
+      _showSnackBar(
+        res['message'] ?? 'Selamat datang kembali!',
+        isError: false,
+      );
       final user = res['user'];
       final userName = user?.name as String? ?? 'User';
       Navigator.of(context).pushReplacement(
@@ -61,6 +69,25 @@ class _LoginPageState extends State<LoginPage> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  void _handleBiometricLogin() async {
+    bool isAuthenticated = await _biometricService.authenticate();
+
+    if (!mounted) return;
+
+    if (isAuthenticated) {
+      _showSnackBar('Login Biometrik Berhasil!', isError: false);
+
+      // Arahkan ke HomePage
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const HomePage(userName: 'User Biometrik'),
+        ),
+      );
+    } else {
+      _showSnackBar('Autentikasi biometrik dibatalkan atau gagal');
+    }
   }
 
   @override
@@ -213,7 +240,6 @@ class _LoginPageState extends State<LoginPage> {
                         //     ),
                         //   ),
                         // ),
-                        
                         const SizedBox(height: 24),
 
                         // Login Button
@@ -254,7 +280,34 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 28),
-
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56, // Tinggi yang sama
+                          child: ElevatedButton(
+                            onPressed: _handleBiometricLogin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  primaryTeal, // Warna Teal yang sama
+                              foregroundColor:
+                                  Colors.white, // Teks Putih yang sama
+                              elevation: 4,
+                              shadowColor: primaryTeal.withOpacity(0.3),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  16,
+                                ), // Rounded yang sama
+                              ),
+                            ),
+                            child: const Text(
+                              'Masuk Melalui Biometrik', // Spasi antar huruf disamakan style-nya
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 2.5, // Spacing yang sama
+                              ),
+                            ),
+                          ),
+                        ),
                         // Divider
                         Container(
                           height: 1,
