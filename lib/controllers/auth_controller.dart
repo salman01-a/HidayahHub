@@ -58,4 +58,13 @@ class AuthController {
       return {'success': false, 'message': msg};
     }
   }
+
+  Future<UserModel?> getUserByEmail(String email) async {
+    try {
+      return await _db.getUserByEmail(email);
+    } catch (e, st) {
+      if (kDebugMode) print('Get user by email error: $e\n$st');
+      return null;
+    }
+  }
 }

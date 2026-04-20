@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'register_page.dart';
+import 'home_page.dart';
 import '../controllers/auth_controller.dart';
+import '../services/biometric_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,16 +14,52 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const String _lastEmailKey = 'last_email';
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final BiometricService _biometricService = BiometricService();
   bool _isLoading = false; // Untuk indikator loading
   bool _obscurePassword = true; // Untuk toggle mata di password
+  bool _checkingBiometric = true;
+  bool _isBiometricReady = false;
+  String? _lastEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareBiometricState();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _prepareBiometricState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString(_lastEmailKey);
+    bool ready = false;
+    String? validatedEmail;
+
+    if (savedEmail != null && savedEmail.trim().isNotEmpty) {
+      final user = await AuthController.instance.getUserByEmail(savedEmail);
+      if (user != null) {
+        ready = true;
+        validatedEmail = savedEmail;
+      } else {
+        await prefs.remove(_lastEmailKey);
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _lastEmail = validatedEmail;
+      _isBiometricReady = ready;
+      _checkingBiometric = false;
+    });
   }
 
   void _handleLogin() async {
@@ -37,11 +77,32 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final res = await AuthController.instance.login(email: email, password: password);
+    final res = await AuthController.instance.login(
+      email: email,
+      password: password,
+    );
     if (!mounted) return;
     if (res['success'] == true) {
-      _showSnackBar(res['message'] ?? 'Selamat datang kembali!', isError: false);
-      // TODO: navigate to home
+      _showSnackBar(
+        res['message'] ?? 'Selamat datang kembali!',
+        isError: false,
+      );
+      final user = res['user'];
+      final userName = user?.name as String? ?? 'User'; 
+      final userEmail = user?.email as String? ?? '';
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastEmailKey, userEmail);
+
+      if (!mounted) return;
+      setState(() {
+        _lastEmail = userEmail;
+        _isBiometricReady = true;
+      });
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomePage(userName: userName)),
+      );
     } else {
       _showSnackBar(res['message'] ?? 'Gagal login');
     }
@@ -55,6 +116,44 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: isError ? Colors.redAccent : const Color(0xFF1B5E20),
         behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+
+  void _handleBiometricLogin() async {
+    if (_checkingBiometric || !_isBiometricReady || _lastEmail == null) {
+      _showSnackBar('Silakan login manual terlebih dahulu sekali.');
+      return;
+    }
+
+    final lastEmail = _lastEmail!;
+
+    bool isAuthenticated = await _biometricService.authenticate();
+
+    if (!mounted) return;
+
+    if (!isAuthenticated) {
+      _showSnackBar('Autentikasi gagal atau dibatalkan');
+      return;
+    }
+
+    final user = await AuthController.instance.getUserByEmail(lastEmail);
+    if (!mounted) return;
+
+    if (user == null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_lastEmailKey);
+      if (!mounted) return;
+      setState(() {
+        _lastEmail = null;
+        _isBiometricReady = false;
+      });
+      _showSnackBar('Akun terakhir tidak ditemukan. Login manual kembali.');
+      return;
+    }
+
+    _showSnackBar('Login Biometrik Berhasil!', isError: false);
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => HomePage(userName: user.name)),
     );
   }
 
@@ -208,7 +307,6 @@ class _LoginPageState extends State<LoginPage> {
                         //     ),
                         //   ),
                         // ),
-                        
                         const SizedBox(height: 24),
 
                         // Login Button
@@ -249,7 +347,42 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 28),
-
+                        if (_checkingBiometric)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        else if (_isBiometricReady)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : _handleBiometricLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryTeal,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shadowColor: primaryTeal.withOpacity(0.3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: const Text(
+                                'Masuk Melalui Biometrik',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 2.5,
+                                ),
+                              ),
+                            ),
+                          ),
                         // Divider
                         Container(
                           height: 1,
