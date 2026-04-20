@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-class ProfileTab extends StatelessWidget {
+class ProfileView extends StatelessWidget {
   final String userName;
 
-  const ProfileTab({super.key, required this.userName});
+  const ProfileView({super.key, required this.userName});
 
   @override
   Widget build(BuildContext context) {

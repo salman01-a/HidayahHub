@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../../controllers/time_conversion_controller.dart';
 import '../../models/shalat_schedule.dart';
 
-class TimeConversionPage extends StatefulWidget {
-  const TimeConversionPage({super.key});
+class TimeConversionView extends StatefulWidget {
+  const TimeConversionView({super.key});
 
   @override
-  State<TimeConversionPage> createState() => _TimeConversionPageState();
+  State<TimeConversionView> createState() => _TimeConversionViewState();
 }
 
-class _TimeConversionPageState extends State<TimeConversionPage> {
+class _TimeConversionViewState extends State<TimeConversionView> {
   static const _bg = Color(0xFFF4F7FC);
   static const _card = Colors.white;
   static const _primary = Color(0xFF1A73E8);

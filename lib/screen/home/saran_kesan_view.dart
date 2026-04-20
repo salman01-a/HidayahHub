@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../controllers/saran_kesan_controller.dart';
 
-class SaranKesanTab extends StatefulWidget {
-  const SaranKesanTab({super.key});
+class SaranKesanView extends StatefulWidget {
+  const SaranKesanView({super.key});
 
   @override
-  State<SaranKesanTab> createState() => _SaranKesanTabState();
+  State<SaranKesanView> createState() => _SaranKesanViewState();
 }
 
-class _SaranKesanTabState extends State<SaranKesanTab> {
+class _SaranKesanViewState extends State<SaranKesanView> {
   late final SaranKesanController _controller;
 
   @override

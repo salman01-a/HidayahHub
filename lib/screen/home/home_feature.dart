@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 enum HomeFeatureAction {
   bukaQuran,
   bukaDoa,
-  cariSurah,
+  terakhirDibaca,
   konversiWaktu,
   chatbot,
   zakatDonasi,

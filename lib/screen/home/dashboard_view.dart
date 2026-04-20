@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import '../../controllers/dashboard_controller.dart';
 import 'home_feature.dart';
 
-class DashboardTab extends StatefulWidget {
+class DashboardView extends StatefulWidget {
   final List<HomeFeature> features;
   final ValueChanged<HomeFeature> onTapFeature;
   final String userName;
 
-  const DashboardTab({
+  const DashboardView({
     super.key,
     required this.features,
     required this.onTapFeature,
@@ -18,10 +18,10 @@ class DashboardTab extends StatefulWidget {
   });
 
   @override
-  State<DashboardTab> createState() => _DashboardTabState();
+  State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardTabState extends State<DashboardTab> {
+class _DashboardViewState extends State<DashboardView> {
   late final DashboardController _controller;
   final PageController _highlightController = PageController(
     viewportFraction: 0.92,

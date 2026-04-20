@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/home_controller.dart';
-import 'home/dashboard_tab.dart';
-import 'home/doa_tab.dart';
+import 'home/dashboard_view.dart';
+import 'home/doa_view.dart';
 import 'home/home_feature.dart';
-import 'home/profile_tab.dart';
-import 'home/quran_tab.dart';
-import 'home/search_surah_tab.dart';
-import 'home/saran_kesan_tab.dart';
-import 'home/tools_pages.dart';
+import 'home/profile_view.dart';
+import 'home/quran_view.dart';
+import 'home/last_read_view.dart';
+import 'home/saran_kesan_view.dart';
+import 'home/time_conversion_view.dart';
 import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -45,13 +45,13 @@ class _HomePageState extends State<HomePage> {
   void _onHomeFeatureTap(HomeFeature feature) {
     switch (feature.action) {
       case HomeFeatureAction.bukaQuran:
-        _openFeaturePage('Baca Al Quran', const QuranTab());
+        _openFeaturePage('Baca Al Quran', const QuranView());
         break;
       case HomeFeatureAction.bukaDoa:
-        _openFeaturePage('Kumpulan Doa', const DoaTab());
+        _openFeaturePage('Kumpulan Doa', const DoaView());
         break;
-      case HomeFeatureAction.cariSurah:
-        _openFeaturePage('Cari Surah', const SearchSurahTab());
+      case HomeFeatureAction.terakhirDibaca:
+        _openFeaturePage('Terakhir Dibaca', const LastReadView());
         break;
       case HomeFeatureAction.konversiWaktu:
         Navigator.of(context)
@@ -59,7 +59,7 @@ class _HomePageState extends State<HomePage> {
               PageRouteBuilder<void>(
                 transitionDuration: const Duration(milliseconds: 320),
                 reverseTransitionDuration: const Duration(milliseconds: 260),
-                pageBuilder: (_, __, ___) => const TimeConversionPage(),
+                pageBuilder: (_, __, ___) => const TimeConversionView(),
                 transitionsBuilder: (context, animation, secondary, child) {
                   final slide = Tween<Offset>(
                     begin: const Offset(0.06, 0.0),
@@ -223,14 +223,14 @@ class _HomePageState extends State<HomePage> {
     const bgColor = Color(0xFFF3F6FA);
 
     final pages = <Widget>[
-      DashboardTab(
+      DashboardView(
         key: ValueKey('dashboard-${_controller.dashboardRefreshSignal}'),
         features: _controller.homeOnlyFeatures,
         onTapFeature: _onHomeFeatureTap,
         userName: widget.userName,
       ),
-      ProfileTab(userName: widget.userName),
-      const SaranKesanTab(),
+      ProfileView(userName: widget.userName),
+      const SaranKesanView(),
     ];
 
     return Scaffold(

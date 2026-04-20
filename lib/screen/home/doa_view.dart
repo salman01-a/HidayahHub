@@ -4,14 +4,14 @@ import '../../controllers/doa_controller.dart';
 import '../../models/doa.dart';
 import 'shared_widgets.dart';
 
-class DoaTab extends StatefulWidget {
-  const DoaTab({super.key});
+class DoaView extends StatefulWidget {
+  const DoaView({super.key});
 
   @override
-  State<DoaTab> createState() => _DoaTabState();
+  State<DoaView> createState() => _DoaViewState();
 }
 
-class _DoaTabState extends State<DoaTab> {
+class _DoaViewState extends State<DoaView> {
   late final DoaController _controller;
   final TextEditingController _searchController = TextEditingController();
 

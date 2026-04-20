@@ -26,10 +26,10 @@ class HomeController extends ChangeNotifier {
       availableNow: true,
     ),
     HomeFeature(
-      title: 'Cari Surah',
-      icon: Icons.search_rounded,
+      title: 'Terakhir Dibaca',
+      icon: Icons.bookmark_rounded,
       color: Color(0xFF6D72D7),
-      action: HomeFeatureAction.cariSurah,
+      action: HomeFeatureAction.terakhirDibaca,
       availableNow: true,
     ),
     HomeFeature(

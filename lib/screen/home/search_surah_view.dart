@@ -4,14 +4,14 @@ import '../../controllers/search_surah_controller.dart';
 import '../../models/surah.dart';
 import 'shared_widgets.dart';
 
-class SearchSurahTab extends StatefulWidget {
-  const SearchSurahTab({super.key});
+class SearchSurahView extends StatefulWidget {
+  const SearchSurahView({super.key});
 
   @override
-  State<SearchSurahTab> createState() => _SearchSurahTabState();
+  State<SearchSurahView> createState() => _SearchSurahViewState();
 }
 
-class _SearchSurahTabState extends State<SearchSurahTab> {
+class _SearchSurahViewState extends State<SearchSurahView> {
   late final SearchSurahController _controller;
   final TextEditingController _searchController = TextEditingController();
 
