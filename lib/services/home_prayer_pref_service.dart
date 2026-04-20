@@ -1,6 +1,5 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'db_helper.dart';
+import 'package:sqflite/sqflite.dart';
 
 class HomePrayerPreference {
   final String provinsi;
@@ -41,25 +40,28 @@ class HomePrayerPreference {
 class HomePrayerPrefService {
   HomePrayerPrefService._();
   static final HomePrayerPrefService instance = HomePrayerPrefService._();
-
-  static const _prefKey = 'home_prayer_preference_v1';
+  static const int _singletonRowId = 1;
 
   Future<void> save(HomePrayerPreference preference) async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(preference.toMap());
-    await prefs.setString(_prefKey, encoded);
+    final db = await DBHelper.instance.database;
+    await db.insert('home_prayer_preferences', {
+      'id': _singletonRowId,
+      ...preference.toMap(),
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<HomePrayerPreference?> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefKey);
-    if (raw == null || raw.isEmpty) return null;
-
-    try {
-      final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return HomePrayerPreference.fromMap(decoded);
-    } catch (_) {
-      return null;
+    final db = await DBHelper.instance.database;
+    final rows = await db.query(
+      'home_prayer_preferences',
+      where: 'id = ?',
+      whereArgs: [_singletonRowId],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) {
+      return HomePrayerPreference.fromMap(rows.first);
     }
+    return null;
   }
 }

@@ -1,20 +1,19 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
+
+import 'db_helper.dart';
 
 class SurahReadBookmarkService {
   SurahReadBookmarkService._();
   static final SurahReadBookmarkService instance = SurahReadBookmarkService._();
 
-  static const _prefix = 'surah_last_read_ayat_';
-
   Future<Map<int, int>> loadAllBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
+    final db = await DBHelper.instance.database;
     final result = <int, int>{};
-
-    for (final key in prefs.getKeys()) {
-      if (!key.startsWith(_prefix)) continue;
-      final surahNo = int.tryParse(key.substring(_prefix.length));
-      final ayat = prefs.getInt(key);
-      if (surahNo != null && ayat != null) {
+    final latestRows = await db.query('surah_read_bookmarks');
+    for (final row in latestRows) {
+      final surahNo = row['surah_no'];
+      final ayat = row['ayat'];
+      if (surahNo is int && ayat is int) {
         result[surahNo] = ayat;
       }
     }
@@ -22,19 +21,37 @@ class SurahReadBookmarkService {
     return result;
   }
 
+
   Future<int?> getBookmarkAyat(int surahNo) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('$_prefix$surahNo');
+    final db = await DBHelper.instance.database;
+    final rows = await db.query(
+      'surah_read_bookmarks',
+      columns: ['ayat'],
+      where: 'surah_no = ?',
+      whereArgs: [surahNo],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final ayat = rows.first['ayat'];
+    return ayat is int ? ayat : null;
   }
 
   Future<void> saveBookmark({required int surahNo, required int ayat}) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('$_prefix$surahNo', ayat);
+    final db = await DBHelper.instance.database;
+    await db.insert('surah_read_bookmarks', {
+      'surah_no': surahNo,
+      'ayat': ayat,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> clearBookmark(int surahNo) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_prefix$surahNo');
+    final db = await DBHelper.instance.database;
+    await db.delete(
+      'surah_read_bookmarks',
+      where: 'surah_no = ?',
+      whereArgs: [surahNo],
+    );
   }
 
   Future<bool> toggleBookmark({required int surahNo, required int ayat}) async {
