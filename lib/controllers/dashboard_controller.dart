@@ -118,7 +118,24 @@ class DashboardController extends ChangeNotifier {
   }
 
   Future<void> refreshDashboard() async {
-    await Future.wait([loadDoa(), loadHomePrayerConfig()]);
+    await Future.wait<void>([
+      _safeLoadDoa(),
+      _safeLoadHomePrayerConfig(),
+    ]);
+  }
+
+  Future<void> _safeLoadDoa() async {
+    try {
+      await loadDoa().timeout(const Duration(seconds: 15));
+    } catch (_) {
+    }
+  }
+
+  Future<void> _safeLoadHomePrayerConfig() async {
+    try {
+      await loadHomePrayerConfig().timeout(const Duration(seconds: 20));
+    } catch (_) {
+    }
   }
 
   Future<List<DoaItem>> loadDoa() async {
