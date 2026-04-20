@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/home_controller.dart';
 import 'home/dashboard_tab.dart';
 import 'home/doa_tab.dart';
 import 'home/home_feature.dart';
@@ -20,92 +21,26 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const int _navHome = 0;
-  static const int _navLogout = 3;
+  late final HomeController _controller;
 
-  int _selectedNavIndex = _navHome;
-  int _currentPage = 0;
-  int _dashboardRefreshSignal = 0;
+  @override
+  void initState() {
+    super.initState();
+    _controller = HomeController();
+    _controller.addListener(_onControllerChanged);
+  }
 
-  late final List<HomeFeature> _homeOnlyFeatures = [
-    const HomeFeature(
-      title: 'Baca Al Quran',
-      icon: Icons.menu_book_rounded,
-      color: Color(0xFF3F95D0),
-      action: HomeFeatureAction.bukaQuran,
-      availableNow: true,
-    ),
-    const HomeFeature(
-      title: 'Kumpulan Doa',
-      icon: Icons.auto_stories_rounded,
-      color: Color(0xFF66A64A),
-      action: HomeFeatureAction.bukaDoa,
-      availableNow: true,
-    ),
-    const HomeFeature(
-      title: 'Cari Surah',
-      icon: Icons.search_rounded,
-      color: Color(0xFF6D72D7),
-      action: HomeFeatureAction.cariSurah,
-      availableNow: true,
-    ),
-    const HomeFeature(
-      title: 'Waktu & Sholat ID',
-      icon: Icons.schedule_rounded,
-      color: Color(0xFFF0B64A),
-      action: HomeFeatureAction.konversiWaktu,
-      availableNow: true,
-    ),
-    const HomeFeature(
-      title: 'Chatbot',
-      icon: Icons.smart_toy_outlined,
-      color: Color(0xFF5C78D9),
-      action: HomeFeatureAction.chatbot,
-      availableNow: false,
-    ),
-    const HomeFeature(
-      title: 'Zakat & Donasi',
-      icon: Icons.volunteer_activism_outlined,
-      color: Color(0xFFF08B4A),
-      action: HomeFeatureAction.zakatDonasi,
-      availableNow: false,
-    ),
-    const HomeFeature(
-      title: 'Cari Masjid',
-      icon: Icons.location_on_outlined,
-      color: Color(0xFF57B56D),
-      action: HomeFeatureAction.masjidTerdekat,
-      availableNow: false,
-    ),
-    const HomeFeature(
-      title: 'Arah Kiblat',
-      icon: Icons.explore_outlined,
-      color: Color(0xFF7F72D8),
-      action: HomeFeatureAction.arahKiblat,
-      availableNow: false,
-    ),
-    const HomeFeature(
-      title: 'Shake Surah',
-      icon: Icons.vibration_rounded,
-      color: Color(0xFF4B8AC2),
-      action: HomeFeatureAction.shakeSurah,
-      availableNow: false,
-    ),
-    const HomeFeature(
-      title: 'Minigames Ayat',
-      icon: Icons.extension_outlined,
-      color: Color(0xFFD46879),
-      action: HomeFeatureAction.miniGames,
-      availableNow: false,
-    ),
-    const HomeFeature(
-      title: 'Notif Sholat',
-      icon: Icons.notifications_active_outlined,
-      color: Color(0xFF4BA890),
-      action: HomeFeatureAction.notifSholat,
-      availableNow: false,
-    ),
-  ];
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
 
   void _onHomeFeatureTap(HomeFeature feature) {
     switch (feature.action) {
@@ -142,7 +77,7 @@ class _HomePageState extends State<HomePage> {
             )
             .then((_) {
               if (!mounted) return;
-              setState(() => _dashboardRefreshSignal++);
+              _controller.refreshDashboardSignal();
             });
         break;
       case HomeFeatureAction.chatbot:
@@ -228,7 +163,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (shouldLogout != true || !mounted) {
-      setState(() => _selectedNavIndex = _currentPage);
+      _controller.resetSelectedToCurrent();
       return;
     }
 
@@ -289,8 +224,8 @@ class _HomePageState extends State<HomePage> {
 
     final pages = <Widget>[
       DashboardTab(
-        key: ValueKey('dashboard-$_dashboardRefreshSignal'),
-        features: _homeOnlyFeatures,
+        key: ValueKey('dashboard-${_controller.dashboardRefreshSignal}'),
+        features: _controller.homeOnlyFeatures,
         onTapFeature: _onHomeFeatureTap,
         userName: widget.userName,
       ),
@@ -363,19 +298,16 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 6),
         ],
       ),
-      body: IndexedStack(index: _currentPage, children: pages),
+      body: IndexedStack(index: _controller.currentPage, children: pages),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedNavIndex,
+        selectedIndex: _controller.selectedNavIndex,
         onDestinationSelected: (index) {
-          if (index == _navLogout) {
-            setState(() => _selectedNavIndex = _navLogout);
+          if (index == HomeController.navLogout) {
+            _controller.setLogoutSelected();
             _handleLogout();
             return;
           }
-          setState(() {
-            _selectedNavIndex = index;
-            _currentPage = index;
-          });
+          _controller.selectDestination(index);
         },
         backgroundColor: Colors.white,
         indicatorColor: const Color(0xFFD8ECE7),

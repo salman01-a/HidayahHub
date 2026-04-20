@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../../models/doa.dart';
-import '../../services/doa_service.dart';
-import '../../services/home_prayer_pref_service.dart';
-import '../../services/shalat_service.dart';
+import '../../controllers/dashboard_controller.dart';
 import 'home_feature.dart';
 
 class DashboardTab extends StatefulWidget {
@@ -26,183 +22,57 @@ class DashboardTab extends StatefulWidget {
 }
 
 class _DashboardTabState extends State<DashboardTab> {
-  static const Map<String, TimeOfDay> _defaultPrayerTimes = {
-    'Subuh': TimeOfDay(hour: 4, minute: 45),
-    'Dzuhur': TimeOfDay(hour: 12, minute: 8),
-    'Ashar': TimeOfDay(hour: 15, minute: 25),
-    'Maghrib': TimeOfDay(hour: 17, minute: 41),
-    'Isya': TimeOfDay(hour: 19, minute: 10),
-  };
-
-  static const Map<String, int> _zoneOffsets = {
-    'WIB': 7,
-    'WITA': 8,
-    'WIT': 9,
-    'London': 0,
-  };
-
-  static const List<_HighlightItem> _highlightItems = [
-    _HighlightItem(
-      title: 'Baca Alquran',
-      description:
-          'Baca ayat harian dan lanjutkan progres terakhirmu dengan nyaman.',
-      icon: Icons.menu_book_rounded,
-      colors: [Color(0xFF0C4A8D), Color(0xFF1B69CC)],
-    ),
-    _HighlightItem(
-      title: 'Baca Kumpulan Surah',
-      description:
-          'Temukan surah pilihan lengkap dengan tampilan yang lebih fokus.',
-      icon: Icons.auto_stories_rounded,
-      colors: [Color(0xFF0A6B67), Color(0xFF26A7A0)],
-    ),
-    _HighlightItem(
-      title: 'Mini Game',
-      description:
-          'Latih hafalan ayat dengan konsep permainan yang ringan dan seru.',
-      icon: Icons.extension_rounded,
-      colors: [Color(0xFF7A2A8E), Color(0xFFB348D9)],
-    ),
-    _HighlightItem(
-      title: 'Tracking Masjid',
-      description:
-          'Pantau lokasi masjid terdekat dan rencanakan perjalanan ibadahmu.',
-      icon: Icons.location_on_rounded,
-      colors: [Color(0xFF9A3F16), Color(0xFFD96B2F)],
-    ),
-  ];
-
-  late final Timer _clockTimer;
-  Timer? _highlightTimer;
-
-  DateTime _nowLocal = DateTime.now();
-
-  late final Future<List<DoaItem>> _doaFuture;
-  List<DoaItem> _allDoa = const [];
-  DoaItem? _randomDoa;
-
+  late final DashboardController _controller;
   final PageController _highlightController = PageController(
     viewportFraction: 0.92,
   );
-  int _highlightIndex = 0;
-
-  Map<String, TimeOfDay> _prayerTimes = Map<String, TimeOfDay>.from(
-    _defaultPrayerTimes,
-  );
-  String _activeZone = 'WIB';
-  String _activeRegion = 'Pengaturan default';
-  bool _loadingPrayerSetting = true;
-  bool _showMoreFeatures = false;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
     super.initState();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _nowLocal = DateTime.now());
-    });
-
+    _controller = DashboardController();
+    _controller.addListener(_onControllerChanged);
+    _controller.initialize();
     _startHighlightAutoSlide();
-    _doaFuture = _loadDoa();
-    _loadHomePrayerConfig();
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    _highlightController.dispose();
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _startHighlightAutoSlide() {
     _highlightTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted || !_highlightController.hasClients) return;
-      final next = (_highlightIndex + 1) % _highlightItems.length;
+      final next =
+          (_controller.highlightIndex + 1) %
+          DashboardController.highlightItems.length;
       _highlightController.animateToPage(
         next,
         duration: const Duration(milliseconds: 420),
         curve: Curves.easeOutCubic,
       );
+      _controller.setHighlightIndex(next);
     });
-  }
-
-  Future<void> _loadHomePrayerConfig() async {
-    try {
-      final pref = await HomePrayerPrefService.instance.load();
-      if (pref == null) {
-        if (!mounted) return;
-        setState(() => _loadingPrayerSetting = false);
-        return;
-      }
-
-      final zone = pref.zona.trim().isEmpty ? 'WIB' : pref.zona.trim();
-      if (!mounted) return;
-      setState(() {
-        _activeZone = zone;
-        _activeRegion = '${pref.kabkota}, ${pref.provinsi}';
-        _loadingPrayerSetting = true;
-      });
-
-      final schedule = await ShalatService.instance.getJadwal(
-        provinsi: pref.provinsi,
-        kabkota: pref.kabkota,
-        bulan: pref.bulan,
-        tahun: pref.tahun,
-      );
-
-      if (!mounted) return;
-
-      final zoneNow = _nowInZone(zone);
-      final todayEntry = schedule.jadwal.firstWhere(
-        (entry) => entry.tanggal == zoneNow.day,
-        orElse: () => schedule.jadwal.first,
-      );
-
-      setState(() {
-        _prayerTimes = {
-          'Subuh': _parseTime(todayEntry.subuh),
-          'Dzuhur': _parseTime(todayEntry.dzuhur),
-          'Ashar': _parseTime(todayEntry.ashar),
-          'Maghrib': _parseTime(todayEntry.maghrib),
-          'Isya': _parseTime(todayEntry.isya),
-        };
-        _loadingPrayerSetting = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingPrayerSetting = false);
-    }
-  }
-
-  Future<List<DoaItem>> _loadDoa() async {
-    final list = await DoaService.instance.getDoaList();
-    if (mounted) {
-      setState(() {
-        _allDoa = list;
-        _randomDoa = list.isEmpty ? null : list[Random().nextInt(list.length)];
-      });
-    }
-    return list;
-  }
-
-  Future<void> _refreshDashboard() async {
-    await Future.wait([_loadDoa(), _loadHomePrayerConfig()]);
-  }
-
-  void _pickRandomDoa() {
-    if (_allDoa.isEmpty) return;
-    setState(() => _randomDoa = _allDoa[Random().nextInt(_allDoa.length)]);
-  }
-
-  @override
-  void dispose() {
-    _clockTimer.cancel();
-    _highlightTimer?.cancel();
-    _highlightController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final zoneNow = _nowInZone(_activeZone);
-    final nextPrayer = _nextPrayer(zoneNow);
-    final quickFeatures = widget.features;
+    final zoneNow = _controller.nowInZone(_controller.activeZone);
+    final nextPrayer = _controller.nextPrayer(zoneNow);
 
     return RefreshIndicator(
-      onRefresh: _refreshDashboard,
+      onRefresh: _controller.refreshDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
@@ -214,7 +84,7 @@ class _DashboardTabState extends State<DashboardTab> {
             'Akses fitur harian dalam satu sentuhan',
           ),
           const SizedBox(height: 10),
-          _featureMenuSection(quickFeatures),
+          _featureMenuSection(widget.features),
           const SizedBox(height: 16),
           _sectionHeader(
             'Highlight Pilihan',
@@ -270,7 +140,7 @@ class _DashboardTabState extends State<DashboardTab> {
             children: [
               Expanded(
                 child: Text(
-                  _formatDateCompact(zoneNow),
+                  _controller.formatDateCompact(zoneNow),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -281,7 +151,7 @@ class _DashboardTabState extends State<DashboardTab> {
               ),
               const SizedBox(width: 10),
               Text(
-                '${_formatHmWithDot(zoneNow)} ${_activeZone.trim()}',
+                '${_controller.formatHmWithDot(zoneNow)} ${_controller.activeZone.trim()}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -291,13 +161,13 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
           const SizedBox(height: 2),
           Text(
-            _formatRegionLine(_activeRegion),
+            _controller.formatRegionLine(_controller.activeRegion),
             style: const TextStyle(
               color: Colors.white70,
               fontWeight: FontWeight.w500,
             ),
           ),
-          if (_loadingPrayerSetting)
+          if (_controller.loadingPrayerSetting)
             const Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
@@ -311,9 +181,14 @@ class _DashboardTabState extends State<DashboardTab> {
               Expanded(
                 child: _PrayerBubble(
                   title: 'Sedang Berlangsung',
-                  prayer: _currentPrayer(zoneNow),
-                  value: _formatHm(
-                    _toDate(zoneNow, _prayerTimes[_currentPrayer(zoneNow)]!),
+                  prayer: _controller.currentPrayer(zoneNow),
+                  value: _controller.formatHm(
+                    _controller.toDate(
+                      zoneNow,
+                      _controller.prayerTimes[_controller.currentPrayer(
+                        zoneNow,
+                      )]!,
+                    ),
                   ),
                   icon: Icons.wb_sunny_outlined,
                 ),
@@ -323,7 +198,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 child: _PrayerBubble(
                   title: 'Berikutnya',
                   prayer: nextPrayer.$1,
-                  value: 'in ${_countdown(zoneNow, nextPrayer.$2)}',
+                  value: 'in ${_controller.countdown(zoneNow, nextPrayer.$2)}',
                   icon: Icons.nights_stay_outlined,
                 ),
               ),
@@ -385,46 +260,44 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Widget _featureMenuSection(List<HomeFeature> allItems) {
-  final topItems = allItems.take(8).toList(growable: false);
-  final moreItems = allItems.skip(8).toList(growable: false);
+    final topItems = _controller.topFeatures(allItems);
+    final moreItems = _controller.moreFeatures(allItems);
 
-  return Column(
-    children: [
-      _featureMiniGrid(topItems),
-      AnimatedSize(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-        child: _showMoreFeatures && moreItems.isNotEmpty
-            ? Column(
-                children: [
-                  const SizedBox(height: 12),
-                  _featureMiniGrid(moreItems),
-                ],
-              )
-            : const SizedBox.shrink(),
-      ),
-      if (moreItems.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: TextButton.icon(
-            onPressed: () {
-              setState(() => _showMoreFeatures = !_showMoreFeatures);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF24659B),
-              textStyle: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            icon: Icon(
-              _showMoreFeatures
-                  ? Icons.keyboard_arrow_up_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-            ),
-            label: Text(_showMoreFeatures ? 'Tutup' : 'Lainnya'),
-          ),
+    return Column(
+      children: [
+        _featureMiniGrid(topItems),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          child: _controller.showMoreFeatures && moreItems.isNotEmpty
+              ? Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    _featureMiniGrid(moreItems),
+                  ],
+                )
+              : const SizedBox.shrink(),
         ),
-    ],
-  );
-}
+        if (moreItems.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: TextButton.icon(
+              onPressed: _controller.toggleMoreFeatures,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF24659B),
+                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              icon: Icon(
+                _controller.showMoreFeatures
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+              ),
+              label: Text(_controller.showMoreFeatures ? 'Tutup' : 'Lainnya'),
+            ),
+          ),
+      ],
+    );
+  }
 
   Widget _highlightSlider() {
     return Column(
@@ -433,10 +306,10 @@ class _DashboardTabState extends State<DashboardTab> {
           height: 150,
           child: PageView.builder(
             controller: _highlightController,
-            itemCount: _highlightItems.length,
-            onPageChanged: (index) => setState(() => _highlightIndex = index),
+            itemCount: DashboardController.highlightItems.length,
+            onPageChanged: _controller.setHighlightIndex,
             itemBuilder: (context, index) {
-              final item = _highlightItems[index];
+              final item = DashboardController.highlightItems[index];
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: DecoratedBox(
@@ -495,8 +368,10 @@ class _DashboardTabState extends State<DashboardTab> {
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_highlightItems.length, (index) {
-            final active = index == _highlightIndex;
+          children: List.generate(DashboardController.highlightItems.length, (
+            index,
+          ) {
+            final active = index == _controller.highlightIndex;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -516,11 +391,11 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Widget _randomDoaCard() {
-    return FutureBuilder<List<DoaItem>>(
-      future: _doaFuture,
+    return FutureBuilder(
+      future: _controller.doaFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
-            _randomDoa == null) {
+            _controller.randomDoa == null) {
           return Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -537,7 +412,7 @@ class _DashboardTabState extends State<DashboardTab> {
           );
         }
 
-        if (snapshot.hasError && _randomDoa == null) {
+        if (snapshot.hasError && _controller.randomDoa == null) {
           return Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -550,7 +425,7 @@ class _DashboardTabState extends State<DashboardTab> {
           );
         }
 
-        final doa = _randomDoa;
+        final doa = _controller.randomDoa;
         if (doa == null) {
           return Container(
             padding: const EdgeInsets.all(18),
@@ -601,7 +476,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                   ),
                   IconButton(
-                    onPressed: _pickRandomDoa,
+                    onPressed: _controller.pickRandomDoa,
                     icon: const Icon(Icons.refresh_rounded),
                     tooltip: 'Refresh doa random',
                   ),
@@ -634,95 +509,6 @@ class _DashboardTabState extends State<DashboardTab> {
         );
       },
     );
-  }
-
-  (String, DateTime) _nextPrayer(DateTime now) {
-    for (final e in _prayerTimes.entries) {
-      final dt = _toDate(now, e.value);
-      if (dt.isAfter(now)) return (e.key, dt);
-    }
-    return (
-      'Subuh',
-      _toDate(now.add(const Duration(days: 1)), _prayerTimes['Subuh']!),
-    );
-  }
-
-  String _currentPrayer(DateTime now) {
-    String current = 'Subuh';
-    for (final e in _prayerTimes.entries) {
-      if (now.isAfter(_toDate(now, e.value))) current = e.key;
-    }
-    return current;
-  }
-
-  DateTime _toDate(DateTime date, TimeOfDay tod) {
-    return DateTime(date.year, date.month, date.day, tod.hour, tod.minute);
-  }
-
-  DateTime _nowInZone(String zone) {
-    final targetMinutes = (_zoneOffsets[zone] ?? 7) * 60;
-    final localMinutes = _nowLocal.timeZoneOffset.inMinutes;
-    final diffMinutes = targetMinutes - localMinutes;
-    return _nowLocal.add(Duration(minutes: diffMinutes));
-  }
-
-  TimeOfDay _parseTime(String hhmm) {
-    final parts = hhmm.split(':');
-    if (parts.length != 2) return const TimeOfDay(hour: 12, minute: 0);
-    final h = int.tryParse(parts[0]) ?? 12;
-    final m = int.tryParse(parts[1]) ?? 0;
-    return TimeOfDay(hour: h.clamp(0, 23), minute: m.clamp(0, 59));
-  }
-
-  String _countdown(DateTime now, DateTime next) {
-    final d = next.difference(now);
-    return '${d.inHours}h ${d.inMinutes.remainder(60)}m ${d.inSeconds.remainder(60)}s';
-  }
-
-  String _formatDateCompact(DateTime dt) {
-    const weekdays = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-    return '${weekdays[(dt.weekday + 6) % 7]},${dt.day} ${months[dt.month - 1]} ${dt.year}';
-  }
-
-  String _formatHm(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
-  String _formatHmWithDot(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h.$m';
-  }
-
-  String _formatRegionLine(String rawRegion) {
-    return rawRegion
-        .replaceAll('D.I.', 'D.I')
-        .replaceAll('Kab. ', 'Kab.')
-        .replaceAll('KAB. ', 'Kab.');
   }
 }
 
@@ -837,18 +623,4 @@ class _FeatureMiniCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HighlightItem {
-  final String title;
-  final String description;
-  final IconData icon;
-  final List<Color> colors;
-
-  const _HighlightItem({
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.colors,
-  });
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/saran_kesan_controller.dart';
+
 class SaranKesanTab extends StatefulWidget {
   const SaranKesanTab({super.key});
 
@@ -8,27 +10,26 @@ class SaranKesanTab extends StatefulWidget {
 }
 
 class _SaranKesanTabState extends State<SaranKesanTab> {
-  final _namaController = TextEditingController();
-  final _kelasController = TextEditingController();
-  final _saranController = TextEditingController();
-  final _kesanController = TextEditingController();
+  late final SaranKesanController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = SaranKesanController();
+  }
 
   @override
   void dispose() {
-    _namaController.dispose();
-    _kelasController.dispose();
-    _saranController.dispose();
-    _kesanController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   void _submit() {
-    if (_namaController.text.trim().isEmpty ||
-        _saranController.text.trim().isEmpty ||
-        _kesanController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama, saran, dan kesan wajib diisi')),
-      );
+    final validation = _controller.validate();
+    if (validation != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(validation)));
       return;
     }
 
@@ -39,8 +40,7 @@ class _SaranKesanTabState extends State<SaranKesanTab> {
       ),
     );
 
-    _saranController.clear();
-    _kesanController.clear();
+    _controller.clearAfterSubmit();
   }
 
   @override
@@ -60,13 +60,13 @@ class _SaranKesanTabState extends State<SaranKesanTab> {
           ),
         ),
         const SizedBox(height: 12),
-        _field('Nama', _namaController),
+        _field('Nama', _controller.namaController),
         const SizedBox(height: 10),
-        _field('Kelas / NIM (opsional)', _kelasController),
+        _field('Kelas / NIM (opsional)', _controller.kelasController),
         const SizedBox(height: 10),
-        _field('Saran', _saranController, maxLines: 4),
+        _field('Saran', _controller.saranController, maxLines: 4),
         const SizedBox(height: 10),
-        _field('Kesan', _kesanController, maxLines: 4),
+        _field('Kesan', _controller.kesanController, maxLines: 4),
         const SizedBox(height: 14),
         SizedBox(
           height: 48,
@@ -75,7 +75,9 @@ class _SaranKesanTabState extends State<SaranKesanTab> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0A6C5D),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Kirim'),
           ),

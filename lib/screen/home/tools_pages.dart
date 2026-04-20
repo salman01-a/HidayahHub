@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
+import '../../controllers/time_conversion_controller.dart';
 import '../../models/shalat_schedule.dart';
-import '../../services/home_prayer_pref_service.dart';
-import '../../services/shalat_service.dart';
 
 class TimeConversionPage extends StatefulWidget {
   const TimeConversionPage({super.key});
@@ -14,35 +11,6 @@ class TimeConversionPage extends StatefulWidget {
 }
 
 class _TimeConversionPageState extends State<TimeConversionPage> {
-  static const int _fixedYear = 2026;
-  static const Map<String, int> _zones = {
-    'WIB': 7,
-    'WITA': 8,
-    'WIT': 9,
-    'London': 0,
-  };
-
-  int _sectionIndex = 0;
-
-  bool _loadingInitial = true;
-  bool _loadingCities = false;
-  bool _loadingSchedule = false;
-  bool _savingHomeSetting = false;
-  String? _error;
-  DateTime _nowLocal = DateTime.now();
-  Timer? _clockTimer;
-
-  List<String> _provinsi = const [];
-  List<String> _kabkota = const [];
-  String? _selectedProvinsi;
-  String? _selectedKabkota;
-  int _selectedBulan = DateTime.now().month;
-  MonthlyShalatSchedule? _schedule;
-
-  String _baseZone = 'WIB';
-  TimeOfDay _baseTime = const TimeOfDay(hour: 12, minute: 0);
-  bool _usePickedTimeForPreview = false;
-
   static const _bg = Color(0xFFF4F7FC);
   static const _card = Colors.white;
   static const _primary = Color(0xFF1A73E8);
@@ -51,167 +19,54 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
   static const _textMain = Color(0xFF1D2D45);
   static const _textSub = Color(0xFF5C6E89);
 
+  late final TimeConversionController _controller;
+
   @override
   void initState() {
     super.initState();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _nowLocal = DateTime.now());
-    });
-    _initShalatData();
+    _controller = TimeConversionController();
+    _controller.addListener(_onControllerChanged);
+    _controller.initialize();
   }
 
   @override
   void dispose() {
-    _clockTimer?.cancel();
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _initShalatData() async {
-    setState(() {
-      _loadingInitial = true;
-      _error = null;
-    });
-
-    try {
-      final provinces = await ShalatService.instance.getProvinsi();
-      if (provinces.isEmpty) {
-        throw Exception('Daftar provinsi kosong');
-      }
-
-      final selectedProv = provinces.first;
-      final cities = await ShalatService.instance.getKabkota(selectedProv);
-      final selectedCity = cities.isNotEmpty ? cities.first : null;
-
-      MonthlyShalatSchedule? schedule;
-      if (selectedCity != null) {
-        schedule = await ShalatService.instance.getJadwal(
-          provinsi: selectedProv,
-          kabkota: selectedCity,
-          bulan: _selectedBulan,
-          tahun: _fixedYear,
-        );
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _provinsi = provinces;
-        _kabkota = cities;
-        _selectedProvinsi = selectedProv;
-        _selectedKabkota = selectedCity;
-        _schedule = schedule;
-        _baseZone = _inferIndonesiaZone(selectedProv);
-        if (schedule != null && schedule.jadwal.isNotEmpty) {
-          _baseTime = _parseTime(schedule.jadwal.first.subuh);
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _loadingInitial = false);
-      }
-    }
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
-  Future<void> _onProvinsiChanged(String value) async {
-    setState(() {
-      _selectedProvinsi = value;
-      _selectedKabkota = null;
-      _kabkota = const [];
-      _loadingCities = true;
-      _error = null;
-      _baseZone = _inferIndonesiaZone(value);
-    });
-
-    try {
-      final cities = await ShalatService.instance.getKabkota(value);
-      if (!mounted) return;
-      setState(() {
-        _kabkota = cities;
-        _selectedKabkota = cities.isNotEmpty ? cities.first : null;
-      });
-      await _fetchSchedule();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loadingCities = false);
+  Future<void> _saveToHome() async {
+    if (_controller.selectedProvinsi == null ||
+        _controller.selectedKabkota == null) {
+      return;
     }
-  }
 
-  Future<void> _fetchSchedule() async {
-    if (_selectedProvinsi == null || _selectedKabkota == null) return;
+    final confirmed = await _confirmTimezoneMismatch();
+    if (!confirmed) return;
 
-    setState(() {
-      _loadingSchedule = true;
-      _error = null;
-    });
-
-    try {
-      final schedule = await ShalatService.instance.getJadwal(
-        provinsi: _selectedProvinsi!,
-        kabkota: _selectedKabkota!,
-        bulan: _selectedBulan,
-        tahun: _fixedYear,
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _schedule = schedule;
-        if (schedule.jadwal.isNotEmpty) {
-          _baseTime = _parseTime(schedule.jadwal.first.subuh);
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loadingSchedule = false);
-    }
-  }
-
-  Future<void> _setAsHomePrayerSource() async {
-    if (_selectedProvinsi == null || _selectedKabkota == null) return;
-
-    final canContinue = await _confirmTimezoneMismatch();
-    if (!canContinue) return;
-
-    setState(() => _savingHomeSetting = true);
-    try {
-      await HomePrayerPrefService.instance.save(
-        HomePrayerPreference(
-          provinsi: _selectedProvinsi!,
-          kabkota: _selectedKabkota!,
-          bulan: _selectedBulan,
-          tahun: _fixedYear,
-          zona: _baseZone,
+    await _controller.saveHomePrayerSource();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Zona ${_controller.baseZone} berhasil disimpan ke Home Page.',
         ),
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Zona $_baseZone berhasil disimpan ke Home Page.'),
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan pengaturan Home Page.')),
-      );
-    } finally {
-      if (mounted) setState(() => _savingHomeSetting = false);
-    }
+      ),
+    );
   }
 
   Future<bool> _confirmTimezoneMismatch() async {
-    final prov = _selectedProvinsi;
+    final prov = _controller.selectedProvinsi;
     if (prov == null) return true;
 
-    final expectedZone = _inferIndonesiaZone(prov);
-    if (expectedZone == _baseZone) return true;
+    final expectedZone = _controller.inferIndonesiaZone(prov);
+    if (expectedZone == _controller.baseZone) return true;
 
     final decision = await showDialog<bool>(
       context: context,
@@ -219,7 +74,7 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
         return AlertDialog(
           title: const Text('Konfirmasi Zona Waktu'),
           content: Text(
-            'Lokasi $prov umumnya berada di zona $expectedZone, tetapi Anda memilih $_baseZone. Lanjutkan menyimpan?',
+            'Lokasi $prov umumnya berada di zona $expectedZone, tetapi Anda memilih ${_controller.baseZone}. Lanjutkan menyimpan?',
           ),
           actions: [
             TextButton(
@@ -240,7 +95,7 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingInitial) {
+    if (_controller.loadingInitial) {
       return Scaffold(
         body: Container(
           color: _bg,
@@ -295,7 +150,7 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
           const SizedBox(height: 12),
           _buildSectionSwitch(),
           const SizedBox(height: 12),
-          if (_sectionIndex == 0)
+          if (_controller.sectionIndex == 0)
             _buildShalatSection()
           else
             _buildConversionSection(),
@@ -351,10 +206,10 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
   }
 
   Widget _buildSectionButton(String label, int idx) {
-    final selected = _sectionIndex == idx;
+    final selected = _controller.sectionIndex == idx;
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => setState(() => _sectionIndex = idx),
+      onTap: () => _controller.setSectionIndex(idx),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         padding: const EdgeInsets.symmetric(vertical: 11),
@@ -406,13 +261,13 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
           child: Column(
             children: [
               DropdownButtonFormField<String>(
-                initialValue: _selectedProvinsi,
-                items: _provinsi
+                initialValue: _controller.selectedProvinsi,
+                items: _controller.provinsi
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(growable: false),
                 onChanged: (value) {
                   if (value != null) {
-                    _onProvinsiChanged(value);
+                    _controller.onProvinsiChanged(value);
                   }
                 },
                 decoration: _inputDecoration('Provinsi'),
@@ -421,16 +276,15 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _selectedKabkota,
-                items: _kabkota
+                initialValue: _controller.selectedKabkota,
+                items: _controller.kabkota
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(growable: false),
-                onChanged: _loadingCities
+                onChanged: _controller.loadingCities
                     ? null
                     : (value) {
                         if (value != null) {
-                          setState(() => _selectedKabkota = value);
-                          _fetchSchedule();
+                          _controller.onKabkotaChanged(value);
                         }
                       },
                 decoration: _inputDecoration('Kabupaten/Kota'),
@@ -439,18 +293,17 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                initialValue: _selectedBulan,
+                initialValue: _controller.selectedBulan,
                 items: List.generate(
                   12,
                   (i) => DropdownMenuItem(
                     value: i + 1,
-                    child: Text(_bulanNama(i + 1)),
+                    child: Text(_controller.bulanNama(i + 1)),
                   ),
                 ),
                 onChanged: (value) {
                   if (value != null) {
-                    setState(() => _selectedBulan = value);
-                    _fetchSchedule();
+                    _controller.onBulanChanged(value);
                   }
                 },
                 decoration: _inputDecoration('Bulan'),
@@ -461,16 +314,16 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
           ),
         ),
         const SizedBox(height: 12),
-        if (_loadingCities || _loadingSchedule)
-          Center(
+        if (_controller.loadingCities || _controller.loadingSchedule)
+          const Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
+              padding: EdgeInsets.symmetric(vertical: 24),
               child: CircularProgressIndicator(
-                valueColor: const AlwaysStoppedAnimation(_primary),
+                valueColor: AlwaysStoppedAnimation(_primary),
               ),
             ),
           ),
-        if (_error != null)
+        if (_controller.error != null)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -480,12 +333,12 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
               border: Border.all(color: const Color(0xFFF6B6BE)),
             ),
             child: Text(
-              _error!,
+              _controller.error!,
               style: const TextStyle(color: Color(0xFFFF7A7A)),
             ),
           ),
-        if (_schedule != null && !_loadingSchedule)
-          _buildScheduleTable(_schedule!),
+        if (_controller.schedule != null && !_controller.loadingSchedule)
+          _buildScheduleTable(_controller.schedule!),
       ],
     );
   }
@@ -512,7 +365,7 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
           ),
           const SizedBox(height: 3),
           Text(
-            '${schedule.kabkota}, ${schedule.provinsi} · $_fixedYear',
+            '${schedule.kabkota}, ${schedule.provinsi} · ${TimeConversionController.fixedYear}',
             style: const TextStyle(color: _textSub),
           ),
           const SizedBox(height: 12),
@@ -583,12 +436,12 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            initialValue: _baseZone,
-            items: _zones.keys
+            initialValue: _controller.baseZone,
+            items: TimeConversionController.zones.keys
                 .map((z) => DropdownMenuItem(value: z, child: Text(z)))
                 .toList(growable: false),
             onChanged: (value) {
-              if (value != null) setState(() => _baseZone = value);
+              if (value != null) _controller.setBaseZone(value);
             },
             decoration: _inputDecoration('Zona acuan untuk HomePage'),
             dropdownColor: Colors.white,
@@ -602,13 +455,10 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
                   onPressed: () async {
                     final picked = await showTimePicker(
                       context: context,
-                      initialTime: _baseTime,
+                      initialTime: _controller.baseTime,
                     );
                     if (picked != null) {
-                      setState(() {
-                        _baseTime = picked;
-                        _usePickedTimeForPreview = true;
-                      });
+                      _controller.setPickedTime(picked);
                     }
                   },
                   style: OutlinedButton.styleFrom(
@@ -621,8 +471,8 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
                   ),
                   icon: const Icon(Icons.access_time_rounded),
                   label: Text(
-                    _usePickedTimeForPreview
-                        ? 'Pilih Waktu (${_formatTOD(_baseTime)})'
+                    _controller.usePickedTimeForPreview
+                        ? 'Pilih Waktu (${_controller.formatTOD(_controller.baseTime)})'
                         : 'Pilih Waktu',
                   ),
                 ),
@@ -631,11 +481,11 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
               Expanded(
                 child: FilledButton.icon(
                   onPressed:
-                      (_selectedProvinsi == null ||
-                          _selectedKabkota == null ||
-                          _savingHomeSetting)
+                      (_controller.selectedProvinsi == null ||
+                          _controller.selectedKabkota == null ||
+                          _controller.savingHomeSetting)
                       ? null
-                      : _setAsHomePrayerSource,
+                      : _saveToHome,
                   style: FilledButton.styleFrom(
                     backgroundColor: _accent,
                     foregroundColor: const Color(0xFF07343C),
@@ -645,7 +495,7 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  icon: _savingHomeSetting
+                  icon: _controller.savingHomeSetting
                       ? const SizedBox(
                           width: 14,
                           height: 14,
@@ -659,16 +509,18 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            _usePickedTimeForPreview
-                ? 'Mode preview aktif. HomePage tetap memakai jam realtime zona $_baseZone.'
-                : 'Mode realtime aktif. HomePage akan mengikuti realtime zona $_baseZone.',
-            style: const TextStyle(color: Color(0xFF9BC0EA), fontSize: 12),
+            _controller.usePickedTimeForPreview
+                ? 'Mode preview aktif. HomePage tetap memakai jam realtime zona ${_controller.baseZone}.'
+                : 'Mode realtime aktif. HomePage akan mengikuti realtime zona ${_controller.baseZone}.',
+            style: const TextStyle(color: _textSub, fontSize: 12),
           ),
           const SizedBox(height: 10),
-          ..._zones.keys.map((zoneName) {
-            final realtime = _formatDateTimeShort(_nowInZone(zoneName));
-            final preview = _convert(zoneName);
-            final zoneSelected = zoneName == _baseZone;
+          ...TimeConversionController.zones.keys.map((zoneName) {
+            final realtime = _controller.formatDateTimeShort(
+              _controller.nowInZone(zoneName),
+            );
+            final preview = _controller.convert(zoneName);
+            final zoneSelected = zoneName == _controller.baseZone;
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -702,7 +554,7 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
                           color: _primary,
                         ),
                       ),
-                      if (_usePickedTimeForPreview)
+                      if (_controller.usePickedTimeForPreview)
                         Text(
                           'Preview: $preview',
                           style: const TextStyle(fontSize: 11, color: _textSub),
@@ -716,78 +568,5 @@ class _TimeConversionPageState extends State<TimeConversionPage> {
         ],
       ),
     );
-  }
-
-  String _inferIndonesiaZone(String provinsi) {
-    final p = provinsi.toLowerCase();
-    if (p.contains('papua') || p.contains('maluku')) return 'WIT';
-    if (p.contains('bali') ||
-        p.contains('nusa tenggara') ||
-        p.contains('sulawesi') ||
-        p.contains('kalimantan timur') ||
-        p.contains('kalimantan utara')) {
-      return 'WITA';
-    }
-    return 'WIB';
-  }
-
-  TimeOfDay _parseTime(String hhmm) {
-    final parts = hhmm.split(':');
-    if (parts.length != 2) return const TimeOfDay(hour: 12, minute: 0);
-    final h = int.tryParse(parts[0]) ?? 12;
-    final m = int.tryParse(parts[1]) ?? 0;
-    return TimeOfDay(hour: h.clamp(0, 23), minute: m.clamp(0, 59));
-  }
-
-  String _convert(String targetZone) {
-    final targetOffset = _zones[targetZone] ?? 7;
-    final baseOffset = _zones[_baseZone] ?? 7;
-    final utc = DateTime.utc(
-      _nowLocal.year,
-      _nowLocal.month,
-      _nowLocal.day,
-      _baseTime.hour - baseOffset,
-      _baseTime.minute,
-    );
-    final converted = utc.add(Duration(hours: targetOffset));
-    final h = converted.hour.toString().padLeft(2, '0');
-    final m = converted.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
-  DateTime _nowInZone(String zone) {
-    final offset = _zones[zone] ?? 7;
-    return _nowLocal.toUtc().add(Duration(hours: offset));
-  }
-
-  String _formatDateTimeShort(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    final s = dt.second.toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
-  String _formatTOD(TimeOfDay t) {
-    final h = t.hour.toString().padLeft(2, '0');
-    final m = t.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
-  String _bulanNama(int bulan) {
-    const names = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-    return names[(bulan - 1).clamp(0, 11)];
   }
 }

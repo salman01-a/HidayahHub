@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/doa_controller.dart';
 import '../../models/doa.dart';
-import '../../services/doa_service.dart';
 import 'shared_widgets.dart';
 
 class DoaTab extends StatefulWidget {
@@ -12,20 +12,30 @@ class DoaTab extends StatefulWidget {
 }
 
 class _DoaTabState extends State<DoaTab> {
+  late final DoaController _controller;
   final TextEditingController _searchController = TextEditingController();
-  late Future<List<DoaItem>> _doaFuture;
 
   @override
   void initState() {
     super.initState();
-    _doaFuture = DoaService.instance.getDoaList();
-    _searchController.addListener(() => setState(() {}));
+    _controller = DoaController();
+    _controller.addListener(_onControllerChanged);
+    _searchController.addListener(
+      () => _controller.setQuery(_searchController.text),
+    );
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -50,7 +60,7 @@ class _DoaTabState extends State<DoaTab> {
         ),
         Expanded(
           child: FutureBuilder<List<DoaItem>>(
-            future: _doaFuture,
+            future: _controller.doaFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -59,23 +69,12 @@ class _DoaTabState extends State<DoaTab> {
                 return ErrorPane(error: snapshot.error.toString());
               }
 
-              final query = _searchController.text.trim().toLowerCase();
               final allDoa = snapshot.data ?? const <DoaItem>[];
-              final items = query.isEmpty
-                  ? allDoa
-                  : allDoa
-                        .where(
-                          (e) =>
-                              e.title.toLowerCase().contains(query) ||
-                              e.group.toLowerCase().contains(query) ||
-                              e.translation.toLowerCase().contains(query),
-                        )
-                        .toList(growable: false);
+              final items = _controller.filtered(allDoa);
 
               return RefreshIndicator(
                 onRefresh: () async {
-                  setState(() => _doaFuture = DoaService.instance.getDoaList());
-                  await _doaFuture;
+                  await _controller.refresh();
                 },
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -91,31 +90,52 @@ class _DoaTabState extends State<DoaTab> {
                       ),
                       child: ExpansionTile(
                         shape: const Border(),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                        tilePadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 2,
+                        ),
                         title: Text(
                           doa.title,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
                         ),
                         subtitle: Text(
                           doa.group,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                        childrenPadding: const EdgeInsets.fromLTRB(
+                          14,
+                          0,
+                          14,
+                          14,
+                        ),
                         children: [
                           Text(
                             doa.arabic,
                             textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 22, height: 1.6, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              height: 1.6,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          Text(doa.latin, style: const TextStyle(fontStyle: FontStyle.italic)),
+                          Text(
+                            doa.latin,
+                            style: const TextStyle(fontStyle: FontStyle.italic),
+                          ),
                           const SizedBox(height: 8),
                           Text(doa.translation),
                           const SizedBox(height: 8),
                           Text(
                             doa.reference,
-                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
                           ),
                         ],
                       ),

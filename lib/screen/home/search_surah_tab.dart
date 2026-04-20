@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/search_surah_controller.dart';
 import '../../models/surah.dart';
-import '../../services/equran_service.dart';
 import 'shared_widgets.dart';
 
 class SearchSurahTab extends StatefulWidget {
@@ -12,20 +12,30 @@ class SearchSurahTab extends StatefulWidget {
 }
 
 class _SearchSurahTabState extends State<SearchSurahTab> {
+  late final SearchSurahController _controller;
   final TextEditingController _searchController = TextEditingController();
-  late Future<List<Surah>> _surahFuture;
 
   @override
   void initState() {
     super.initState();
-    _surahFuture = EQuranService.instance.getSurahList();
-    _searchController.addListener(() => setState(() {}));
+    _controller = SearchSurahController();
+    _controller.addListener(_onControllerChanged);
+    _searchController.addListener(
+      () => _controller.setQuery(_searchController.text),
+    );
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -50,7 +60,7 @@ class _SearchSurahTabState extends State<SearchSurahTab> {
         ),
         Expanded(
           child: FutureBuilder<List<Surah>>(
-            future: _surahFuture,
+            future: _controller.surahFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -59,25 +69,19 @@ class _SearchSurahTabState extends State<SearchSurahTab> {
                 return ErrorPane(error: snapshot.error.toString());
               }
 
-              final query = _searchController.text.trim().toLowerCase();
               final all = snapshot.data ?? const <Surah>[];
-              final list = query.isEmpty
-                  ? all
-                  : all
-                        .where(
-                          (s) =>
-                              s.namaLatin.toLowerCase().contains(query) ||
-                              s.nama.toLowerCase().contains(query) ||
-                              s.arti.toLowerCase().contains(query) ||
-                              '${s.nomor}'.contains(query),
-                        )
-                        .toList(growable: false);
+              final list = _controller.filtered(all);
 
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                itemCount: list.length,
-                separatorBuilder: (_, index) => const SizedBox(height: 10),
-                itemBuilder: (context, index) => SurahCard(surah: list[index]),
+              return RefreshIndicator(
+                onRefresh: _controller.refresh,
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  itemCount: list.length,
+                  separatorBuilder: (_, index) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) =>
+                      SurahCard(surah: list[index]),
+                ),
               );
             },
           ),
