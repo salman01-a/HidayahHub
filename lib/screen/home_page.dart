@@ -25,6 +25,7 @@ class _HomePageState extends State<HomePage> {
 
   int _selectedNavIndex = _navHome;
   int _currentPage = 0;
+  int _dashboardRefreshSignal = 0;
 
   late final List<HomeFeature> _homeOnlyFeatures = [
     const HomeFeature(
@@ -118,9 +119,31 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Cari Surah', const SearchSurahTab());
         break;
       case HomeFeatureAction.konversiWaktu:
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const TimeConversionPage()));
+        Navigator.of(context)
+            .push(
+              PageRouteBuilder<void>(
+                transitionDuration: const Duration(milliseconds: 320),
+                reverseTransitionDuration: const Duration(milliseconds: 260),
+                pageBuilder: (_, __, ___) => const TimeConversionPage(),
+                transitionsBuilder: (context, animation, secondary, child) {
+                  final slide = Tween<Offset>(
+                    begin: const Offset(0.06, 0.0),
+                    end: Offset.zero,
+                  ).chain(CurveTween(curve: Curves.easeOutCubic));
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: animation.drive(slide),
+                      child: child,
+                    ),
+                  );
+                },
+              ),
+            )
+            .then((_) {
+              if (!mounted) return;
+              setState(() => _dashboardRefreshSignal++);
+            });
         break;
       case HomeFeatureAction.chatbot:
         _showFeatureInfo(
@@ -262,12 +285,14 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFFF4F7F8);
+    const bgColor = Color(0xFFF3F6FA);
 
     final pages = <Widget>[
       DashboardTab(
+        key: ValueKey('dashboard-$_dashboardRefreshSignal'),
         features: _homeOnlyFeatures,
         onTapFeature: _onHomeFeatureTap,
+        userName: widget.userName,
       ),
       ProfileTab(userName: widget.userName),
       const SaranKesanTab(),
@@ -279,35 +304,43 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
-        titleSpacing: 16,
+        titleSpacing: 14,
         title: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFC0EFE2), Color(0xFF8DD8C3)],
-                ),
-                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFFE6F1F9),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: const Icon(Icons.person_rounded, color: Color(0xFF0D4E4A)),
+              child: const Icon(
+                Icons.person_rounded,
+                color: Color(0xFF1F5577),
+                size: 20,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 9),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Assalamu\'alaikum',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
                   Text(
-                    widget.userName,
+                    'Hello ${widget.userName}',
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0A4B45),
+                      fontSize: 11.5,
+                      color: Color(0xFF6A7987),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  const Text(
+                    'Welcome Back!',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF16354A),
                       fontSize: 16,
                     ),
                   ),
@@ -324,9 +357,10 @@ class _HomePageState extends State<HomePage> {
             ),
             icon: const Icon(
               Icons.notifications_none_rounded,
-              color: Color(0xFF0A4B45),
+              color: Color(0xFF1B4D6A),
             ),
           ),
+          const SizedBox(width: 6),
         ],
       ),
       body: IndexedStack(index: _currentPage, children: pages),
@@ -344,7 +378,9 @@ class _HomePageState extends State<HomePage> {
           });
         },
         backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFDFF3EE),
+        indicatorColor: const Color(0xFFD8ECE7),
+        surfaceTintColor: Colors.white,
+        elevation: 4,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: const [
           NavigationDestination(
