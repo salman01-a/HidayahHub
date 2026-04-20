@@ -72,7 +72,7 @@ class HomeController extends ChangeNotifier {
       icon: Icons.vibration_rounded,
       color: Color(0xFF4B8AC2),
       action: HomeFeatureAction.shakeSurah,
-      availableNow: false,
+      availableNow: true,
     ),
     HomeFeature(
       title: 'Minigames Ayat',

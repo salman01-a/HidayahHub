@@ -8,6 +8,7 @@ import 'home/profile_view.dart';
 import 'home/quran_view.dart';
 import 'home/last_read_view.dart';
 import 'home/saran_kesan_view.dart';
+import 'home/shake_surah_view.dart';
 import 'home/time_conversion_view.dart';
 import 'login_page.dart';
 
@@ -111,10 +112,7 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case HomeFeatureAction.shakeSurah:
-        _showFeatureInfo(
-          'Shake Surah',
-          'Butuh plugin gyroscope untuk mendeteksi gesture shake.',
-        );
+        _openFeaturePage('Shake Surah', const ShakeSurahView());
         break;
       case HomeFeatureAction.miniGames:
         _showFeatureInfo(
