@@ -65,7 +65,7 @@ class HomeController extends ChangeNotifier {
       icon: Icons.explore_outlined,
       color: Color(0xFF7F72D8),
       action: HomeFeatureAction.arahKiblat,
-      availableNow: false,
+      availableNow: true,
     ),
     HomeFeature(
       title: 'Shake Surah',
