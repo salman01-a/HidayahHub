@@ -10,6 +10,7 @@ import 'home/last_read_view.dart';
 import 'home/saran_kesan_view.dart';
 import 'home/shake_surah_view.dart';
 import 'home/time_conversion_view.dart';
+import 'home/qibla_view.dart';
 import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -106,10 +107,9 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case HomeFeatureAction.arahKiblat:
-        _showFeatureInfo(
-          'Penunjuk Arah Kiblat',
-          'Butuh sensor kompas, lokasi, dan kalibrasi perangkat.',
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const QiblaView()));
         break;
       case HomeFeatureAction.shakeSurah:
         _openFeaturePage('Shake Surah', const ShakeSurahView());

@@ -68,5 +68,9 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Aplikasi memerlukan Face ID untuk login cepat.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi memerlukan kamera untuk tampilan penunjuk arah kiblat.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi memerlukan lokasi agar arah kiblat lebih akurat.</string>
 </dict>
 </plist>
