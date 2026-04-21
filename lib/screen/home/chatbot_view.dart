@@ -14,9 +14,10 @@ class ChatbotView extends StatefulWidget {
 
 class _ChatbotViewState extends State<ChatbotView> {
   // Palet Warna Hidayah Hub
-  static const _primaryTeal = Color(0xFF1A7F6D);
   static const _deepTeal = Color(0xFF0F5A4E);
   static const _bg = Color(0xFFF8FAFB);
+  static const _botBubble = Color(0xFF1E293B);
+  static const _userBubble = Color(0xFF0F8B77);
 
   late final ChatbotController _controller;
   final TextEditingController _textController = TextEditingController();
@@ -74,31 +75,17 @@ class _ChatbotViewState extends State<ChatbotView> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _controller.messages.length,
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+              itemCount: _controller.messages.length + (_controller.isLoading ? 1 : 0),
               itemBuilder: (context, index) {
+                if (_controller.isLoading && index == _controller.messages.length) {
+                  return _buildTypingBubble();
+                }
                 final message = _controller.messages[index];
                 return _buildMessageBubble(message);
               },
             ),
           ),
-
-          // Indikator "Typing" (Baca state dari Controller)
-          if (_controller.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Asisten sedang mengetik...',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ),
 
           // Area Input Teks
           _buildInputArea(),
@@ -108,42 +95,65 @@ class _ChatbotViewState extends State<ChatbotView> {
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
+    final isUser = message.isUser;
     return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        decoration: BoxDecoration(
-          color: message.isUser ? _primaryTeal : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(message.isUser ? 16 : 4),
-            bottomRight: Radius.circular(message.isUser ? 4 : 16),
-          ),
-          border: message.isUser
-              ? null
-              : Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            if (!message.isUser)
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisAlignment:
+              isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isUser) ...[
+              const _SenderAvatar(isUser: false),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.72,
+                ),
+                decoration: BoxDecoration(
+                  color: isUser ? _userBubble : _botBubble,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: Radius.circular(isUser ? 16 : 4),
+                    bottomRight: Radius.circular(isUser ? 4 : 16),
+                  ),
+                ),
+                child: Text(
+                  message.text,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.8,
+                    height: 1.4,
+                  ),
+                ),
               ),
+            ),
+            if (isUser) ...[
+              const SizedBox(width: 8),
+              const _SenderAvatar(isUser: true),
+            ],
           ],
         ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            color: message.isUser ? Colors.white : Colors.black87,
-            fontSize: 14,
-            height: 1.4,
-          ),
-        ),
+      ),
+    );
+  }
+
+  Widget _buildTypingBubble() {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _SenderAvatar(isUser: false),
+          SizedBox(width: 8),
+          _TypingIndicatorBubble(),
+        ],
       ),
     );
   }
@@ -157,14 +167,25 @@ class _ChatbotViewState extends State<ChatbotView> {
       ),
       child: Row(
         children: [
+          const SizedBox(width: 4),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEAF4F2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.smart_toy_rounded, color: _deepTeal, size: 18),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _textController,
               decoration: InputDecoration(
-                hintText: 'Tulis pesan...',
+                hintText: 'Tanya apa saja tentang Islam...',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 filled: true,
-                fillColor: const Color(0xFFF8FAFB),
+                fillColor: const Color(0xFFF2F6F7),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
@@ -181,7 +202,7 @@ class _ChatbotViewState extends State<ChatbotView> {
           const SizedBox(width: 8),
           Container(
             decoration: const BoxDecoration(
-              color: _primaryTeal,
+              color: _userBubble,
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -194,6 +215,96 @@ class _ChatbotViewState extends State<ChatbotView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SenderAvatar extends StatelessWidget {
+  final bool isUser;
+
+  const _SenderAvatar({required this.isUser});
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = isUser ? const Color(0xFFE8F7F4) : const Color(0xFFEDEFF4);
+    final iconColor = isUser ? const Color(0xFF0F8B77) : const Color(0xFF1E293B);
+
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+      child: Icon(
+        isUser ? Icons.person_rounded : Icons.smart_toy_rounded,
+        size: 17,
+        color: iconColor,
+      ),
+    );
+  }
+}
+
+class _TypingIndicatorBubble extends StatefulWidget {
+  const _TypingIndicatorBubble();
+
+  @override
+  State<_TypingIndicatorBubble> createState() => _TypingIndicatorBubbleState();
+}
+
+class _TypingIndicatorBubbleState extends State<_TypingIndicatorBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E293B),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+          bottomLeft: Radius.circular(4),
+          bottomRight: Radius.circular(16),
+        ),
+      ),
+      child: AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (index) {
+              final t = (_animationController.value - (index * 0.2))
+                  .clamp(0.0, 1.0)
+                  .toDouble();
+              final opacity = 0.35 + (0.65 * (1 - (t - 0.5).abs() * 2));
+
+              return Container(
+                width: 6,
+                height: 6,
+                margin: EdgeInsets.only(right: index == 2 ? 0 : 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: opacity.clamp(0.2, 1.0)),
+                  shape: BoxShape.circle,
+                ),
+              );
+            }),
+          );
+        },
       ),
     );
   }

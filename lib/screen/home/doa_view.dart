@@ -14,12 +14,9 @@ class DoaView extends StatefulWidget {
 class _DoaViewState extends State<DoaView> {
   late final DoaController _controller;
   final TextEditingController _searchController = TextEditingController();
-  String _query = '';
 
   // Palette Hidayah Hub
   static const Color primaryTeal = Color(0xFF1A7F6D);
-  static const Color deepTeal = Color(0xFF0F5A4E);
-  static const Color accentGold = Color(0xFFCBA052);
 
   @override
   void initState() {
@@ -76,7 +73,7 @@ class _DoaViewState extends State<DoaView> {
                   total: allDoa.length,
                   current: filtered.length,
                   searchController: _searchController,
-                  onChanged: (value) => setState(() => _query = value),
+                  onChanged: _controller.setQuery,
                 );
               }
 

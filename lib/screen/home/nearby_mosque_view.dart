@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/nearby_mosque_controller.dart';
@@ -15,8 +17,10 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
   static const Color _primaryTeal = Color(0xFF1A7F6D);
   static const Color _deepTeal = Color(0xFF0F5A4E);
   static const Color _bg = Color(0xFFF6F9FA);
+  static const LatLng _fallbackCenter = LatLng(-7.7956, 110.3695);
 
   late final NearbyMosqueController _controller;
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -35,40 +39,141 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
 
   void _onControllerChanged() {
     if (!mounted) return;
+
+    final lat = _controller.userLatitude;
+    final lon = _controller.userLongitude;
+    if (lat != null && lon != null) {
+      _mapController.move(LatLng(lat, lon), _preferredZoom());
+    }
+
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final hasData = _controller.mosques.isNotEmpty;
+    final center = _currentCenter();
+    final mapMarkers = _buildMapMarkers();
 
     return Scaffold(
       backgroundColor: _bg,
-      body: RefreshIndicator(
-        color: _primaryTeal,
-        onRefresh: _controller.fetchNearbyMosques,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-          children: [
-            _buildHeaderCard(),
-            const SizedBox(height: 14),
-            if (_controller.loading && !hasData)
-              const _LoadingBox()
-            else if (_controller.error != null && !hasData)
-              _ErrorBox(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: _buildHeaderCard(),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: center,
+                      initialZoom: _preferredZoom(),
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                      ),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.hidayahhub.app',
+                      ),
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: center,
+                            radius: _controller.radiusMeters.toDouble(),
+                            useRadiusInMeter: true,
+                            color: _primaryTeal.withValues(alpha: 0.14),
+                            borderStrokeWidth: 2,
+                            borderColor: _primaryTeal.withValues(alpha: 0.55),
+                          ),
+                        ],
+                      ),
+                      MarkerLayer(markers: mapMarkers),
+                    ],
+                  ),
+                ),
+                if (_controller.loading)
+                  Positioned(
+                    top: 14,
+                    left: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.58),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Memuat lokasi...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (_controller.error != null && !hasData)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _ErrorBox(
                 message: _controller.error!,
                 onRetry: _controller.fetchNearbyMosques,
-              )
-            else if (!hasData)
-              _EmptyBox(
+              ),
+            )
+          else if (!hasData)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: _EmptyBox(
                 message:
                     _controller.infoMessage ?? 'Data masjid belum tersedia.',
-              )
-            else
-              ..._controller.mosques.map(_buildMosqueCard),
-          ],
-        ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 146,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                itemCount: _controller.mosques.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final mosque = _controller.mosques[index];
+                  return SizedBox(
+                    width: 280,
+                    child: _buildMosqueCard(mosque),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _controller.loading ? null : _controller.fetchNearbyMosques,
@@ -87,6 +192,76 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
         label: const Text('Refresh Lokasi'),
       ),
     );
+  }
+
+  LatLng _currentCenter() {
+    final lat = _controller.userLatitude;
+    final lon = _controller.userLongitude;
+    if (lat == null || lon == null) return _fallbackCenter;
+    return LatLng(lat, lon);
+  }
+
+  double _preferredZoom() {
+    switch (_controller.radiusMeters) {
+      case 1000:
+        return 14.2;
+      case 3000:
+        return 13.0;
+      case 5000:
+        return 12.3;
+      default:
+        return 13.0;
+    }
+  }
+
+  List<Marker> _buildMapMarkers() {
+    final markers = <Marker>[];
+
+    final userLat = _controller.userLatitude;
+    final userLon = _controller.userLongitude;
+    if (userLat != null && userLon != null) {
+      markers.add(
+        Marker(
+          point: LatLng(userLat, userLon),
+          width: 42,
+          height: 42,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.blue,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    for (final mosque in _controller.mosques) {
+      markers.add(
+        Marker(
+          point: LatLng(mosque.latitude, mosque.longitude),
+          width: 52,
+          height: 52,
+          child: GestureDetector(
+            onTap: () => _openNavigation(mosque),
+            child: const Icon(
+              Icons.location_on_rounded,
+              size: 46,
+              color: Color(0xFF0F5A4E),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return markers;
   }
 
   Future<void> _openNavigation(NearbyMosque mosque) async {
@@ -128,7 +303,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     final lon = _controller.userLongitude;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
@@ -150,7 +325,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Gunakan lokasi real-time untuk menemukan masjid terdekat di sekitar Anda.',
+            'Peta langsung tampil dan hasil otomatis disaring sesuai radius yang dipilih.',
             style: TextStyle(color: Colors.white70, height: 1.35),
           ),
           const SizedBox(height: 14),
@@ -212,7 +387,6 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
         onTap: () => _openNavigation(mosque),
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -230,46 +404,34 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F4F1),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(
                       Icons.mosque_rounded,
                       color: _primaryTeal,
-                      size: 20,
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mosque.name,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF21324A),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          mosque.address,
-                          style: const TextStyle(
-                            color: Color(0xFF5E6D7E),
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      mosque.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF21324A),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -290,31 +452,29 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Row(
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  mosque.address,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF5E6D7E),
+                    fontSize: 12.5,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Lat ${mosque.latitude.toStringAsFixed(6)} | Lon ${mosque.longitude.toStringAsFixed(6)}',
-                      style: const TextStyle(
-                        color: Color(0xFF7A8896),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.navigation_rounded,
-                    size: 17,
-                    color: _primaryTeal,
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    'Arah',
+                  Icon(Icons.navigation_rounded, size: 16, color: _primaryTeal),
+                  SizedBox(width: 4),
+                  Text(
+                    'Ketuk untuk navigasi',
                     style: TextStyle(
                       color: _primaryTeal,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
                   ),
@@ -323,37 +483,6 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _LoadingBox extends StatelessWidget {
-  const _LoadingBox();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        children: [
-          SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.6),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Mencari masjid di sekitar lokasi Anda...',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
       ),
     );
   }

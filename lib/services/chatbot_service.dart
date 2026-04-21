@@ -11,9 +11,9 @@ class ChatbotService {
   ChatbotService() {
     AppEnv.ensureRequired();
 
-    // Inisialisasi model Gemini 
+    // Inisialisasi model Gemini
     _model = GenerativeModel(
-      model: 'gemini-3.1-flash-lite',
+      model: 'gemini-2.5-flash',
       apiKey: AppEnv.geminiApiKey,
       systemInstruction: Content.system(
         'Kamu adalah Asisten AI untuk aplikasi Hidayah Hub. '
@@ -33,7 +33,6 @@ class ChatbotService {
 
   Future<String> getBotResponse(String userMessage) async {
     try {
-
       final response = await _chatSession.sendMessage(
         Content.text(userMessage),
       );

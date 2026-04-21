@@ -14,9 +14,6 @@ class _TimeConversionViewState extends State<TimeConversionView> {
   // Palet Warna Hidayah Hub
   static const _bg = Color(0xFFF8FAFB);
   static const _card = Colors.white;
-  static const _primary = Color(
-    0xFF1A73E8,
-  ); // Akan diganti di bawah pakai primaryTeal
   static const _primaryTeal = Color(0xFF1A7F6D);
   static const _deepTeal = Color(0xFF0F5A4E);
   static const _accentGold = Color(0xFFCBA052);
