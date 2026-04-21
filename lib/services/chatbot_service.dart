@@ -11,27 +11,29 @@ class ChatbotService {
   ChatbotService() {
     AppEnv.ensureRequired();
 
-    // Inisialisasi model Gemini
-    // Kita pakai model 'gemini-1.5-flash' karena responnya super cepat dan cocok buat chatbot
-    // 
+    // Inisialisasi model Gemini 
     _model = GenerativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.1-flash-lite',
       apiKey: AppEnv.geminiApiKey,
       systemInstruction: Content.system(
         'Kamu adalah Asisten AI untuk aplikasi Hidayah Hub. '
         'Jawablah pertanyaan pengguna dengan ramah, sopan, dan berikan informasi seputar agama Islam, '
         'jadwal sholat, atau doa sehari-hari jika ditanya. '
-        'Selalu gunakan bahasa Indonesia yang baik.',
+        'Selalu gunakan bahasa Indonesia yang baik.'
+        'Jika kamu tidak tahu jawabannya, katakan "Maaf, saya tidak tahu jawabannya."'
+        'Jangan pernah memberikan informasi yang salah atau menyesatkan. '
+        'Fokuslah untuk membantu pengguna dengan informasi yang akurat dan bermanfaat seputar agama Islam.'
+        'Jangan memberikan informasi yang tidak relevan atau di luar topik agama Islam. '
+        'Jangan pernah memberikan saran medis, hukum, atau keuangan. '
+        'Jika pengguna bertanya tentang topik yang tidak sesuai, katakan "Maaf, saya hanya bisa membantu dengan informasi seputar agama Islam."',
       ),
     );
-
-    // Memulai sesi obrolan (biar AI ingat riwayat chat)
     _chatSession = _model.startChat();
   }
 
   Future<String> getBotResponse(String userMessage) async {
     try {
-      // Mengirim pesan pengguna ke Gemini
+
       final response = await _chatSession.sendMessage(
         Content.text(userMessage),
       );
