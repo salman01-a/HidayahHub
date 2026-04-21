@@ -67,4 +67,40 @@ class AuthController {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>> updateProfile({
+    required int id,
+    required String name,
+    required String email,
+    String? password,
+  }) async {
+    try {
+      final taken = await _db.isNameTaken(name, id);
+      if (taken)
+        return {'success': false, 'message': 'Username sudah digunakan'};
+
+      final currentUser = await _db.getUserByEmail(email);
+      String finalHash = currentUser?.passwordHash ?? '';
+
+      if (password != null && password.isNotEmpty) {
+        finalHash = UserModel.hashPassword(password);
+      }
+
+      final updatedUser = UserModel(
+        id: id,
+        name: name,
+        email: email,
+        passwordHash: finalHash,
+      );
+
+      await _db.updateUser(updatedUser);
+      return {
+        'success': true,
+        'message': 'Profil berhasil diperbarui',
+        'user': updatedUser,
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal memperbarui profil'};
+    }
+  }
 }

@@ -409,8 +409,11 @@ class _HomePageState extends State<HomePage> {
           NavigationDestination(
             icon: CircleAvatar(
               radius: 12,
-              backgroundColor: Color(0xFFDFF3EE),
-              child: Icon(Icons.person_outline, size: 16),
+              backgroundColor: Colors.black,
+              child: IconTheme(
+                data: IconThemeData(color: Colors.white),
+                child: Icon(Icons.person, size: 16),
+              ),
             ),
             selectedIcon: CircleAvatar(
               radius: 12,

@@ -1,32 +1,15 @@
 import 'package:flutter/material.dart';
 
 class SaranKesanController extends ChangeNotifier {
-  final namaController = TextEditingController();
-  final kelasController = TextEditingController();
-  final saranController = TextEditingController();
-  final kesanController = TextEditingController();
+  final String kelas = "IF-A";
+  final List<Map<String, String>> anggota = [
+    {"nama": "Salman Faris", "nim": "123230024"},
+    {"nama": "Reza Rasendriya Adi Putra", "nim": "123230030"},
+  ];
 
-  String? validate() {
-    if (namaController.text.trim().isEmpty ||
-        saranController.text.trim().isEmpty ||
-        kesanController.text.trim().isEmpty) {
-      return 'Nama, saran, dan kesan wajib diisi';
-    }
-    return null;
-  }
+  final String saran = 
+      "Saran kami untuk mata kuliah TPM adalah agar terus mengedepankan proyek berbasis studi kasus nyata seperti ini. Integrasi dengan API eksternal dan manajemen state sangat membantu kami dalam mempersiapkan diri ke industri.";
 
-  void clearAfterSubmit() {
-    saranController.clear();
-    kesanController.clear();
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    namaController.dispose();
-    kelasController.dispose();
-    saranController.dispose();
-    kesanController.dispose();
-    super.dispose();
-  }
+  final String kesan = 
+      "Belajar di mata kuliah TPM sangat menantang namun memberikan kepuasan tersendiri. Kami belajar bagaimana membangun aplikasi yang tidak hanya fungsional secara teknis, tapi juga memiliki estetika UI/UX yang baik dan nyaman digunakan.";
 }
