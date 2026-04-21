@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;  
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import '../config/app_env.dart';
@@ -10,6 +10,10 @@ import '../models/nearby_route.dart';
 class NearbyMosqueService {
   NearbyMosqueService._();
   static final NearbyMosqueService instance = NearbyMosqueService._();
+  static const List<String> _fallbackOverpassUrls = <String>[
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+  ];
 
   final Map<String, String> _reverseCache = <String, String>{};
 
@@ -19,7 +23,8 @@ class NearbyMosqueService {
     int radiusMeters = 3000,
     int limit = 20,
   }) async {
-    final query = '''
+    final query =
+        '''
 [out:json][timeout:25];
 (
   node["amenity"="place_of_worship"]["religion"="muslim"](around:$radiusMeters,$latitude,$longitude);
@@ -29,10 +34,7 @@ class NearbyMosqueService {
 out center tags;
 ''';
 
-    final response = await http
-      .post(Uri.parse(AppEnv.overpassUrl), body: {'data': query})
-        .timeout(const Duration(seconds: 20));
-
+    final response = await _fetchOverpass(query);
     if (response.statusCode != 200) {
       throw Exception('Gagal mengambil data masjid (${response.statusCode})');
     }
@@ -73,6 +75,45 @@ out center tags;
         : mosques.take(limit).toList(growable: false);
 
     return _enrichAddressWithReverseGeocoding(trimmed);
+  }
+
+  Future<http.Response> _fetchOverpass(String query) async {
+    final endpoints = <String>{
+      AppEnv.overpassUrl,
+      ..._fallbackOverpassUrls,
+    };
+
+    http.Response? lastResponse;
+
+    for (final endpoint in endpoints) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse(endpoint),
+              headers: {
+                'User-Agent': 'HidayahHub/1.0',
+                'Accept': 'application/json, text/plain;q=0.9, */*;q=0.8',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+              },
+              body: {'data': query},
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (response.statusCode == 200) {
+          return response;
+        }
+
+        lastResponse = response;
+      } catch (_) {
+        continue;
+      }
+    }
+
+    if (lastResponse != null) {
+      return lastResponse;
+    }
+
+    throw Exception('Gagal terhubung ke layanan data masjid');
   }
 
   Future<List<NearbyMosque>> _enrichAddressWithReverseGeocoding(
@@ -142,8 +183,8 @@ out center tags;
         .toList(growable: false);
 
     final distanceKm = ((route['distance'] as num?)?.toDouble() ?? 0) / 1000;
-    final durationMin =
-        (((route['duration'] as num?)?.toDouble() ?? 0) / 60).round();
+    final durationMin = (((route['duration'] as num?)?.toDouble() ?? 0) / 60)
+        .round();
 
     return NearbyRoute(
       points: routePoints,
@@ -156,7 +197,8 @@ out center tags;
     required double latitude,
     required double longitude,
   }) async {
-    final cacheKey = '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}';
+    final cacheKey =
+        '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}';
     final cached = _reverseCache[cacheKey];
     if (cached != null) {
       return cached;
@@ -174,12 +216,15 @@ out center tags;
     );
 
     try {
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'HidayahHub/1.0 (nearby mosque feature)',
-        },
-      ).timeout(const Duration(seconds: 12));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'User-Agent': 'HidayahHub/1.0', 
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode != 200) {
         return null;
