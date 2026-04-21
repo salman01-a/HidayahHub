@@ -72,17 +72,15 @@ class SurahCard extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              surah.nama,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 3),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF7A8E9B)),
-          ],
+        trailing: Text(
+          surah.nama,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            // color: Color(
+            //   0xFF0F5A4E,
+            // ),
+          ),
         ),
       ),
     );
