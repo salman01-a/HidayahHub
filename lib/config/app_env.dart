@@ -34,6 +34,9 @@ class AppEnv {
 
   static String get geminiApiKey => _read('GEMINI_API_KEY');
 
+  static String get googleMapsApiKey => _read('GOOGLE_MAPS_API_KEY');
+
+
   static void ensureRequired() {
     if (geminiApiKey.isEmpty) {
       throw StateError(

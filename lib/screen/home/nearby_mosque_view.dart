@@ -203,6 +203,8 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     switch (_controller.radiusMeters) {
       case 1000:
         return 14.2;
+      case 2000: // tambahan untuk radius 2 km
+        return 13.6;
       case 3000:
         return 13.0;
       case 5000:
@@ -400,7 +402,11 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
-            children: [_radiusChip(1000), _radiusChip(3000), _radiusChip(5000)],
+            children: [
+              _radiusChip(1000),
+              _radiusChip(2000), // ubah dari 3000 menjadi 2000
+              _radiusChip(3000), // ubah dari 5000 menjadi 3000
+            ],
           ),
           const SizedBox(height: 10),
           Align(
