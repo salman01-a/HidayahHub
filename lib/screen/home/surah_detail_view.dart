@@ -274,19 +274,20 @@ class _SurahHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1D504E), Color(0xFF2B7A73)],
+          colors: [Color(0xFF1A4F4D), Color(0xFF2A7A73)],
         ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF103532).withValues(alpha: 0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -294,10 +295,10 @@ class _SurahHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white24),
             ),
             child: Row(
@@ -310,66 +311,58 @@ class _SurahHeader extends StatelessWidget {
                   '#${detail.nomor}',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            detail.nama,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 30,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${detail.namaLatin} • ${detail.arti}',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFECE6D2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD2C8A7)),
-            ),
-            child: Column(
-              children: const [
-                Text(
-                  'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 25,
-                    color: Color(0xFF3A352D),
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'bismillaahir-rahmaanir-rahiim',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF456F6A),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              detail.nama,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 34,
+                height: 1.1,
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Arti surah: ${detail.arti}',
-            style: const TextStyle(color: Colors.white),
+          Center(
+            child: Text(
+              '${detail.namaLatin} • ${detail.arti}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFE5F2F0),
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Arti surah: ${detail.arti}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
           if (bookmarkedAyat != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -471,14 +464,20 @@ class _AyatCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            ayat.teksArab,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 31,
-              height: 1.55,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF2F2D2A),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Text(
+                ayat.teksArab,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 31,
+                  height: 1.55,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF2F2D2A),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 10),

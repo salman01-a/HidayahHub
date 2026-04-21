@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
@@ -7,11 +8,14 @@ import 'home/home_feature.dart';
 import 'home/profile_view.dart';
 import 'home/quran_view.dart';
 import 'home/last_read_view.dart';
+import 'home/nearby_mosque_view.dart';
 import 'home/saran_kesan_view.dart';
 import 'home/shake_surah_view.dart';
 import 'home/time_conversion_view.dart';
 import 'home/qibla_view.dart';
 import 'login_page.dart';
+import 'home/chatbot_view.dart';
+import 'home/minigames_view.dart';
 
 class HomePage extends StatefulWidget {
   final String userName;
@@ -23,6 +27,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const String _sessionLoggedInKey = 'session_logged_in';
+  static const String _sessionUserNameKey = 'session_user_name';
+
   late final HomeController _controller;
 
   @override
@@ -83,10 +90,11 @@ class _HomePageState extends State<HomePage> {
             });
         break;
       case HomeFeatureAction.chatbot:
-        _showFeatureInfo(
-          'Chatbot',
-          'Siapkan endpoint AI/chat service lalu hubungkan ke halaman chat.',
-        );
+        // _showFeatureInfo(
+        //   'Chatbot',
+        //   'Siapkan endpoint AI/chat service lalu hubungkan ke halaman chat.',
+        // );
+        _openFeaturePage('Chatbot', const ChatbotView());
         break;
       case HomeFeatureAction.zakatDonasi:
         _showFeatureInfo(
@@ -101,10 +109,7 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case HomeFeatureAction.masjidTerdekat:
-        _showFeatureInfo(
-          'Cari Masjid Terdekat',
-          'Butuh izin lokasi dan integrasi map service.',
-        );
+        _openFeaturePage('Cari Masjid Terdekat', const NearbyMosqueView());
         break;
       case HomeFeatureAction.arahKiblat:
         Navigator.of(
@@ -115,16 +120,18 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Shake Surah', const ShakeSurahView());
         break;
       case HomeFeatureAction.miniGames:
-        _showFeatureInfo(
-          'Minigames Sambung Ayat',
-          'Siapkan bank soal ayat dan mode skor.',
-        );
+        // _showFeatureInfo(
+        //   'Minigames Sambung Ayat',
+        //   'Siapkan bank soal ayat dan mode skor.',
+        // );
+        _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;
       case HomeFeatureAction.notifSholat:
         _showFeatureInfo(
           'Notifikasi Pengingat Sholat',
           'Butuh local notifications dan penjadwalan alarm.',
         );
+
         break;
     }
   }
@@ -243,6 +250,12 @@ class _HomePageState extends State<HomePage> {
       _controller.resetSelectedToCurrent();
       return;
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionLoggedInKey);
+    await prefs.remove(_sessionUserNameKey);
+
+    if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),

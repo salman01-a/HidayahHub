@@ -58,7 +58,7 @@ class HomeController extends ChangeNotifier {
       icon: Icons.location_on_outlined,
       color: Color(0xFF57B56D),
       action: HomeFeatureAction.masjidTerdekat,
-      availableNow: false,
+      availableNow: true,
     ),
     HomeFeature(
       title: 'Arah Kiblat',

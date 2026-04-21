@@ -1,0 +1,152 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;  
+
+import '../config/app_env.dart';
+import '../models/nearby_mosque.dart';
+
+class NearbyMosqueService {
+  NearbyMosqueService._();
+  static final NearbyMosqueService instance = NearbyMosqueService._();
+
+  final Map<String, String> _reverseCache = <String, String>{};
+
+  Future<List<NearbyMosque>> getNearbyMosques({
+    required double latitude,
+    required double longitude,
+    int radiusMeters = 3000,
+    int limit = 20,
+  }) async {
+    final query = '''
+[out:json][timeout:25];
+(
+  node["amenity"="place_of_worship"]["religion"="muslim"](around:$radiusMeters,$latitude,$longitude);
+  way["amenity"="place_of_worship"]["religion"="muslim"](around:$radiusMeters,$latitude,$longitude);
+  relation["amenity"="place_of_worship"]["religion"="muslim"](around:$radiusMeters,$latitude,$longitude);
+);
+out center tags;
+''';
+
+    final response = await http
+      .post(Uri.parse(AppEnv.overpassUrl), body: {'data': query})
+        .timeout(const Duration(seconds: 20));
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal mengambil data masjid (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Format response lokasi masjid tidak valid');
+    }
+
+    final rawElements = decoded['elements'];
+    if (rawElements is! List) {
+      return const <NearbyMosque>[];
+    }
+
+    final mosques = <NearbyMosque>[];
+    final seenIds = <String>{};
+
+    for (final raw in rawElements) {
+      if (raw is! Map<String, dynamic>) continue;
+      try {
+        final item = NearbyMosque.fromOverpassElement(
+          raw,
+          userLatitude: latitude,
+          userLongitude: longitude,
+        );
+        if (seenIds.add(item.id)) {
+          mosques.add(item);
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+
+    mosques.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+
+    final trimmed = mosques.length <= limit
+        ? mosques
+        : mosques.take(limit).toList(growable: false);
+
+    return _enrichAddressWithReverseGeocoding(trimmed);
+  }
+
+  Future<List<NearbyMosque>> _enrichAddressWithReverseGeocoding(
+    List<NearbyMosque> mosques,
+  ) async {
+    final enriched = <NearbyMosque>[];
+
+    for (final mosque in mosques) {
+      if (mosque.hasResolvedAddress) {
+        enriched.add(mosque);
+        continue;
+      }
+
+      final resolved = await _reverseGeocode(
+        latitude: mosque.latitude,
+        longitude: mosque.longitude,
+      );
+
+      if (resolved == null || resolved.trim().isEmpty) {
+        enriched.add(mosque);
+        continue;
+      }
+
+      enriched.add(mosque.copyWith(address: resolved));
+    }
+
+    return enriched;
+  }
+
+  Future<String?> _reverseGeocode({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final cacheKey = '${latitude.toStringAsFixed(6)},${longitude.toStringAsFixed(6)}';
+    final cached = _reverseCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    final uri = Uri.parse(AppEnv.nominatimReverseUrl).replace(
+      queryParameters: {
+        'format': 'jsonv2',
+        'lat': latitude.toString(),
+        'lon': longitude.toString(),
+        'zoom': '18',
+        'addressdetails': '1',
+        'accept-language': 'id',
+      },
+    );
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'HidayahHub/1.0 (nearby mosque feature)',
+        },
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final displayName = (decoded['display_name'] as String?)?.trim();
+      if (displayName == null || displayName.isEmpty) {
+        return null;
+      }
+
+      _reverseCache[cacheKey] = displayName;
+      return displayName;
+    } catch (_) {
+      return null;
+    }
+  }
+}
