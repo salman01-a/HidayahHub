@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
@@ -16,6 +15,7 @@ import 'home/qibla_view.dart';
 import 'login_page.dart';
 import 'home/chatbot_view.dart';
 import 'home/minigames_view.dart';
+import '../services/session_service.dart';
 
 class HomePage extends StatefulWidget {
   final String userName;
@@ -27,10 +27,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const String _sessionLoggedInKey = 'session_logged_in';
-  static const String _sessionUserNameKey = 'session_user_name';
-
   late final HomeController _controller;
+  final SessionService _sessionService = SessionService.instance;
 
   @override
   void initState() {
@@ -251,9 +249,7 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_sessionLoggedInKey);
-    await prefs.remove(_sessionUserNameKey);
+    await _sessionService.clearLoginSession();
 
     if (!mounted) return;
 
@@ -413,8 +409,11 @@ class _HomePageState extends State<HomePage> {
           NavigationDestination(
             icon: CircleAvatar(
               radius: 12,
-              backgroundColor: Color(0xFFDFF3EE),
-              child: Icon(Icons.person_outline, size: 16),
+              backgroundColor: Colors.black,
+              child: IconTheme(
+                data: IconThemeData(color: Colors.white),
+                child: Icon(Icons.person, size: 16),
+              ),
             ),
             selectedIcon: CircleAvatar(
               radius: 12,

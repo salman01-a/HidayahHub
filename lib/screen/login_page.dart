@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'register_page.dart';
 import 'home_page.dart';
 import '../controllers/auth_controller.dart';
 import '../services/biometric_service.dart';
+import '../services/session_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,13 +14,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  static const String _lastEmailKey = 'last_email';
-  static const String _sessionLoggedInKey = 'session_logged_in';
-  static const String _sessionUserNameKey = 'session_user_name';
-
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final BiometricService _biometricService = BiometricService();
+  final SessionService _sessionService = SessionService.instance;
   bool _isLoading = false; // Untuk indikator loading
   bool _obscurePassword = true; // Untuk toggle mata di password
   bool _checkingBiometric = true;
@@ -41,8 +38,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _prepareBiometricState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString(_lastEmailKey);
+    final savedEmail = await _sessionService.getLastEmail();
     bool ready = false;
     String? validatedEmail;
 
@@ -52,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
         ready = true;
         validatedEmail = savedEmail;
       } else {
-        await prefs.remove(_lastEmailKey);
+        await _sessionService.clearLastEmail();
       }
     }
 
@@ -93,10 +89,8 @@ class _LoginPageState extends State<LoginPage> {
       final userName = user?.name as String? ?? 'User'; 
       final userEmail = user?.email as String? ?? '';
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_lastEmailKey, userEmail);
-      await prefs.setBool(_sessionLoggedInKey, true);
-      await prefs.setString(_sessionUserNameKey, userName);
+      await _sessionService.saveLastEmail(userEmail);
+      await _sessionService.saveLoginSession(userName: userName);
 
       if (!mounted) return;
       setState(() {
@@ -144,8 +138,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     if (user == null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_lastEmailKey);
+      await _sessionService.clearLastEmail();
       if (!mounted) return;
       setState(() {
         _lastEmail = null;
@@ -157,9 +150,7 @@ class _LoginPageState extends State<LoginPage> {
 
     _showSnackBar('Login Biometrik Berhasil!', isError: false);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_sessionLoggedInKey, true);
-    await prefs.setString(_sessionUserNameKey, user.name);
+    await _sessionService.saveLoginSession(userName: user.name);
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(

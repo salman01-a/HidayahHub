@@ -92,4 +92,24 @@ class DBHelper {
     if (res.isEmpty) return null;
     return UserModel.fromMap(res.first);
   }
+
+  Future<int> updateUser(UserModel user) async {
+    final db = await database;
+    return await db.update(
+      'users',
+      user.toMap(),
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+  }
+
+  Future<bool> isNameTaken(String name, int excludeId) async {
+    final db = await database;
+    final res = await db.query(
+      'users',
+      where: 'name = ? AND id != ?',
+      whereArgs: [name, excludeId],
+    );
+    return res.isNotEmpty;
+  }
 }

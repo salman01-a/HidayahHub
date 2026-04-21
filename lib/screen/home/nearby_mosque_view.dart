@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../controllers/nearby_mosque_controller.dart';
 import '../../models/nearby_mosque.dart';
@@ -42,7 +41,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
 
     final lat = _controller.userLatitude;
     final lon = _controller.userLongitude;
-    if (lat != null && lon != null) {
+    if (!_controller.navigationActive && lat != null && lon != null) {
       _mapController.move(LatLng(lat, lon), _preferredZoom());
     }
 
@@ -54,6 +53,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     final hasData = _controller.mosques.isNotEmpty;
     final center = _currentCenter();
     final mapMarkers = _buildMapMarkers();
+    final hasActiveNavigation = _controller.navigationActive;
 
     return Scaffold(
       backgroundColor: _bg,
@@ -83,6 +83,16 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.hidayahhub.app',
                       ),
+                      if (_controller.activeRoute.isNotEmpty)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _controller.activeRoute,
+                              strokeWidth: 5,
+                              color: const Color(0xFF1F8D7A),
+                            ),
+                          ],
+                        ),
                       CircleLayer(
                         circles: [
                           CircleMarker(
@@ -136,6 +146,13 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
                       ),
                     ),
                   ),
+                if (hasActiveNavigation)
+                  Positioned(
+                    left: 14,
+                    right: 14,
+                    bottom: 14,
+                    child: _buildNavigationPanel(),
+                  ),
               ],
             ),
           ),
@@ -166,30 +183,11 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
                 separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final mosque = _controller.mosques[index];
-                  return SizedBox(
-                    width: 280,
-                    child: _buildMosqueCard(mosque),
-                  );
+                  return SizedBox(width: 280, child: _buildMosqueCard(mosque));
                 },
               ),
             ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _controller.loading ? null : _controller.fetchNearbyMosques,
-        backgroundColor: _deepTeal,
-        foregroundColor: Colors.white,
-        icon: _controller.loading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Icon(Icons.my_location_rounded),
-        label: const Text('Refresh Lokasi'),
       ),
     );
   }
@@ -244,17 +242,21 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     }
 
     for (final mosque in _controller.mosques) {
+      final isSelected = _controller.activeDestination?.id == mosque.id;
+
       markers.add(
         Marker(
           point: LatLng(mosque.latitude, mosque.longitude),
           width: 52,
           height: 52,
           child: GestureDetector(
-            onTap: () => _openNavigation(mosque),
-            child: const Icon(
+            onTap: () => _startInAppNavigation(mosque),
+            child: Icon(
               Icons.location_on_rounded,
               size: 46,
-              color: Color(0xFF0F5A4E),
+              color: isSelected
+                  ? const Color(0xFFE46735)
+                  : const Color(0xFF0F5A4E),
             ),
           ),
         ),
@@ -264,38 +266,105 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     return markers;
   }
 
-  Future<void> _openNavigation(NearbyMosque mosque) async {
-    final lat = mosque.latitude;
-    final lon = mosque.longitude;
-
-    final googleNavigationUri = Uri.parse('google.navigation:q=$lat,$lon');
-    final googleMapsDirectionUri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lon&travelmode=driving',
-    );
-
-    var launched = false;
-    if (await canLaunchUrl(googleNavigationUri)) {
-      launched = await launchUrl(
-        googleNavigationUri,
-        mode: LaunchMode.externalApplication,
-      );
-    }
-
-    if (!launched) {
-      launched = await launchUrl(
-        googleMapsDirectionUri,
-        mode: LaunchMode.externalApplication,
-      );
-    }
-
-    if (!launched && mounted) {
+  Future<void> _startInAppNavigation(NearbyMosque mosque) async {
+    final userLat = _controller.userLatitude;
+    final userLon = _controller.userLongitude;
+    if (userLat == null || userLon == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tidak bisa membuka aplikasi peta.'),
+          content: Text('Lokasi Anda belum tersedia.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return;
     }
+
+    // Initial focus stays on current user location when navigation starts.
+    _mapController.move(LatLng(userLat, userLon), 16.5);
+    await _controller.startNavigation(mosque);
+
+    if (!mounted) return;
+    if (_controller.activeRoute.length > 1) {
+      final bounds = LatLngBounds.fromPoints(_controller.activeRoute);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.fromLTRB(36, 36, 36, 170),
+        ),
+      );
+    }
+  }
+
+  void _stopInAppNavigation() {
+    _controller.stopNavigation();
+  }
+
+  Widget _buildNavigationPanel() {
+    final destination = _controller.activeDestination;
+    final userLat = _controller.userLatitude;
+    final userLon = _controller.userLongitude;
+    if (destination == null || userLat == null || userLon == null) {
+      return const SizedBox.shrink();
+    }
+
+    final distance = _controller.activeRouteDistanceKm;
+    final duration = _controller.activeRouteDurationMin;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.74),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.navigation_rounded, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Navigasi aktif: ${destination.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  _controller.routeLoading
+                      ? 'Memuat rute jalan...'
+                      : (distance == null
+                            ? 'Jarak belum tersedia'
+                            : 'Rute ${distance.toStringAsFixed(2)} km'
+                                  '${duration == null ? '' : ' · $duration menit'}'),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () =>
+                _mapController.move(LatLng(userLat, userLon), 16.5),
+            icon: const Icon(Icons.my_location_rounded, color: Colors.white),
+            tooltip: 'Fokus ke saya',
+          ),
+          TextButton(
+            onPressed: _stopInAppNavigation,
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHeaderCard() {
@@ -332,6 +401,30 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
           Wrap(
             spacing: 8,
             children: [_radiusChip(1000), _radiusChip(3000), _radiusChip(5000)],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _controller.loading
+                  ? null
+                  : _controller.fetchNearbyMosques,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: _deepTeal,
+              ),
+              icon: _controller.loading
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location_rounded, size: 18),
+              label: const Text(
+                'Refresh Lokasi',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -384,7 +477,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _openNavigation(mosque),
+        onTap: () => _startInAppNavigation(mosque),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(14),
