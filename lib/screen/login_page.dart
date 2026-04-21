@@ -15,6 +15,8 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   static const String _lastEmailKey = 'last_email';
+  static const String _sessionLoggedInKey = 'session_logged_in';
+  static const String _sessionUserNameKey = 'session_user_name';
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -93,6 +95,8 @@ class _LoginPageState extends State<LoginPage> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_lastEmailKey, userEmail);
+      await prefs.setBool(_sessionLoggedInKey, true);
+      await prefs.setString(_sessionUserNameKey, userName);
 
       if (!mounted) return;
       setState(() {
@@ -152,6 +156,12 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     _showSnackBar('Login Biometrik Berhasil!', isError: false);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_sessionLoggedInKey, true);
+    await prefs.setString(_sessionUserNameKey, user.name);
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => HomePage(userName: user.name)),
     );

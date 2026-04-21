@@ -1,5 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'home_page.dart';
 import 'login_page.dart';
 
 class SplashPage extends StatefulWidget {
@@ -10,6 +13,9 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
+  static const String _sessionLoggedInKey = 'session_logged_in';
+  static const String _sessionUserNameKey = 'session_user_name';
+
   late final AnimationController _introController;
   late final AnimationController _ambientController;
   
@@ -86,6 +92,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
         curve: const Interval(0.85, 1.0, curve: Curves.easeInOut),
       ),
     );
+
+    _checkSessionAndNavigate();
   }
 
   @override
@@ -102,6 +110,29 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
         pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
           opacity: animation,
           child: const LoginPage(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkSessionAndNavigate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool(_sessionLoggedInKey) ?? false;
+    final userName = prefs.getString(_sessionUserNameKey) ?? '';
+
+    if (!isLoggedIn || userName.trim().isEmpty || !mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 550),
+        pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
+          opacity: animation,
+          child: HomePage(userName: userName),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
@@ -7,11 +8,14 @@ import 'home/home_feature.dart';
 import 'home/profile_view.dart';
 import 'home/quran_view.dart';
 import 'home/last_read_view.dart';
+import 'home/nearby_mosque_view.dart';
 import 'home/saran_kesan_view.dart';
 import 'home/shake_surah_view.dart';
 import 'home/time_conversion_view.dart';
 import 'home/qibla_view.dart';
 import 'login_page.dart';
+import 'home/chatbot_view.dart';
+import 'home/minigames_view.dart';
 
 class HomePage extends StatefulWidget {
   final String userName;
@@ -23,6 +27,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const String _sessionLoggedInKey = 'session_logged_in';
+  static const String _sessionUserNameKey = 'session_user_name';
+
   late final HomeController _controller;
 
   @override
@@ -83,10 +90,11 @@ class _HomePageState extends State<HomePage> {
             });
         break;
       case HomeFeatureAction.chatbot:
-        _showFeatureInfo(
-          'Chatbot',
-          'Siapkan endpoint AI/chat service lalu hubungkan ke halaman chat.',
-        );
+        // _showFeatureInfo(
+        //   'Chatbot',
+        //   'Siapkan endpoint AI/chat service lalu hubungkan ke halaman chat.',
+        // );
+        _openFeaturePage('Chatbot', const ChatbotView());
         break;
       case HomeFeatureAction.zakatDonasi:
         _showFeatureInfo(
@@ -101,10 +109,7 @@ class _HomePageState extends State<HomePage> {
         );
         break;
       case HomeFeatureAction.masjidTerdekat:
-        _showFeatureInfo(
-          'Cari Masjid Terdekat',
-          'Butuh izin lokasi dan integrasi map service.',
-        );
+        _openFeaturePage('Cari Masjid Terdekat', const NearbyMosqueView());
         break;
       case HomeFeatureAction.arahKiblat:
         Navigator.of(
@@ -115,16 +120,18 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Shake Surah', const ShakeSurahView());
         break;
       case HomeFeatureAction.miniGames:
-        _showFeatureInfo(
-          'Minigames Sambung Ayat',
-          'Siapkan bank soal ayat dan mode skor.',
-        );
+        // _showFeatureInfo(
+        //   'Minigames Sambung Ayat',
+        //   'Siapkan bank soal ayat dan mode skor.',
+        // );
+        _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;
       case HomeFeatureAction.notifSholat:
         _showFeatureInfo(
           'Notifikasi Pengingat Sholat',
           'Butuh local notifications dan penjadwalan alarm.',
         );
+
         break;
     }
   }
@@ -133,7 +140,29 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(title)),
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            centerTitle: true,
+            iconTheme: const IconThemeData(
+              // color: Color(0xFF1A7F6D),
+            ),
+            title: Text(
+              title,
+              style: const TextStyle(
+                // color: Color(0xFF0F5A4E), // Warna text: deepTeal
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1.0),
+              child: Container(color: Colors.grey.shade200, height: 1.0),
+            ),
+          ),
           body: child,
           backgroundColor: const Color(0xFFF4F7F8),
         ),
@@ -145,16 +174,73 @@ class _HomePageState extends State<HomePage> {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Color(0xFFE8F4F1), // backgroundStart
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: Color(0xFF1A7F6D), // primaryTeal
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Keluar Akun',
+              style: TextStyle(
+                color: Color(0xFF0F5A4E), // deepTeal
+                fontWeight: FontWeight.w800,
+                fontSize: 19,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin keluar dari Hidayah Hub? Anda harus login kembali untuk masuk.',
+          style: TextStyle(
+            color: Color(0xFF2C3E50),
+            fontSize: 14.5,
+            height: 1.4,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade600,
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
             child: const Text('Batal'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A7F6D), // primaryTeal
+              foregroundColor: Colors.white,
+              elevation: 2,
+              shadowColor: const Color(0xFF1A7F6D).withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: const Text(
+              'Keluar',
+              style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            ),
           ),
         ],
       ),
@@ -164,6 +250,12 @@ class _HomePageState extends State<HomePage> {
       _controller.resetSelectedToCurrent();
       return;
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionLoggedInKey);
+    await prefs.remove(_sessionUserNameKey);
+
+    if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),

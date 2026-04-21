@@ -22,6 +22,8 @@ class _QiblaViewState extends State<QiblaView> {
 
   double? _heading;
   double? _qiblaBearing;
+  double? _currentLatitude;
+  double? _currentLongitude;
   bool _isLoading = true;
   String? _statusMessage;
 
@@ -99,6 +101,8 @@ class _QiblaViewState extends State<QiblaView> {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
+      _currentLatitude = position.latitude;
+      _currentLongitude = position.longitude;
       _qiblaBearing = _bearingToKaaba(position.latitude, position.longitude);
     } catch (_) {
       _statusMessage = 'Gagal mendapatkan lokasi. Coba lagi beberapa saat.';
@@ -307,8 +311,92 @@ class _QiblaViewState extends State<QiblaView> {
             fontSize: 15,
           ),
         ),
+        const SizedBox(height: 10),
+        _buildCoordinateInfo(),
       ],
     );
+  }
+
+  Widget _buildCoordinateInfo() {
+    String latitudeText() {
+      final latitude = _currentLatitude;
+      if (latitude == null) return '--';
+      return _toDms(latitude);
+    }
+
+    String longitudeText() {
+      final longitude = _currentLongitude;
+      if (longitude == null) return '--';
+      return _toDms(longitude);
+    }
+
+    final latitudeLabel = _currentLatitude == null
+        ? 'LS'
+        : (_currentLatitude! >= 0 ? 'LU' : 'LS');
+    final longitudeLabel = _currentLongitude == null
+        ? 'BT'
+        : (_currentLongitude! >= 0 ? 'BT' : 'BB');
+
+    Widget buildItem(String label, String value) {
+      return Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.26),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          buildItem(latitudeLabel, latitudeText()),
+          const SizedBox(width: 32),
+          buildItem(longitudeLabel, longitudeText()),
+        ],
+      ),
+    );
+  }
+
+  String _toDms(double decimal) {
+    final absValue = decimal.abs();
+    final degree = absValue.floor();
+    final minuteRaw = (absValue - degree) * 60;
+    final minute = minuteRaw.floor();
+    var second = ((minuteRaw - minute) * 60).round();
+
+    var d = degree;
+    var m = minute;
+    if (second == 60) {
+      second = 0;
+      m += 1;
+    }
+    if (m == 60) {
+      m = 0;
+      d += 1;
+    }
+
+    return '$d°${m.toString().padLeft(2, '0')}\'${second.toString().padLeft(2, '0')}"';
   }
 
   Widget _statusBanner() {

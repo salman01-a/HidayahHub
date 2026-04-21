@@ -2,17 +2,16 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_env.dart';
 import '../models/shalat_schedule.dart';
 
 class ShalatService {
   ShalatService._();
   static final ShalatService instance = ShalatService._();
 
-  static const String _base = 'https://equran.id/api/v2/shalat';
-
   Future<List<String>> getProvinsi() async {
     final response = await http
-        .get(Uri.parse('$_base/provinsi'))
+        .get(Uri.parse('${AppEnv.equranBaseUrl}/shalat/provinsi'))
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
@@ -28,7 +27,7 @@ class ShalatService {
   Future<List<String>> getKabkota(String provinsi) async {
     final response = await http
         .post(
-          Uri.parse('$_base/kabkota'),
+          Uri.parse('${AppEnv.equranBaseUrl}/shalat/kabkota'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'provinsi': provinsi}),
         )
@@ -52,7 +51,7 @@ class ShalatService {
   }) async {
     final response = await http
         .post(
-          Uri.parse(_base),
+          Uri.parse('${AppEnv.equranBaseUrl}/shalat'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'provinsi': provinsi,
