@@ -1,12 +1,7 @@
-import 'dart:async';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 
+import '../../controllers/shake_surah_controller.dart';
 import '../../models/surah.dart';
-import '../../services/equran_service.dart';
 import 'shared_widgets.dart';
 
 class ShakeSurahView extends StatefulWidget {
@@ -17,161 +12,49 @@ class ShakeSurahView extends StatefulWidget {
 }
 
 class _ShakeSurahViewState extends State<ShakeSurahView> {
-  static const double _gravity = 9.80665;
-  static const double _defaultThresholdG = 2.4;
-  static const Duration _cooldown = Duration(milliseconds: 900);
-
-  final Random _random = Random();
-
-  StreamSubscription<AccelerometerEvent>? _accelSub;
-  Future<List<Surah>>? _surahFuture;
-
-  Surah? _pickedSurah;
-  final List<Surah> _history = <Surah>[];
-  DateTime _lastShakeAt = DateTime.fromMillisecondsSinceEpoch(0);
-  bool _isListening = true;
-  bool _isLocked = false;
-  bool _sensorAvailable = true;
-  bool _shakePulse = false;
-  double _thresholdG = _defaultThresholdG;
-  int _shakeCount = 0;
+  late final ShakeSurahController _controller;
 
   @override
   void initState() {
     super.initState();
-    _surahFuture = EQuranService.instance.getSurahList();
-    _startListening();
+    _controller = ShakeSurahController();
+    _controller.addListener(_onControllerChanged);
+    _controller.initialize();
   }
 
   @override
   void dispose() {
-    _accelSub?.cancel();
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     super.dispose();
   }
 
-  void _startListening() {
-    _accelSub?.cancel();
-    try {
-      _accelSub = accelerometerEvents.listen(
-        (event) async {
-          if (!_isListening) return;
-
-          final gX = event.x / _gravity;
-          final gY = event.y / _gravity;
-          final gZ = event.z / _gravity;
-          final gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
-
-          if (gForce < _thresholdG) return;
-
-          final now = DateTime.now();
-          if (now.difference(_lastShakeAt) < _cooldown) return;
-          _lastShakeAt = now;
-
-          final list = await _surahFuture;
-          if (!mounted || list == null || list.isEmpty) return;
-
-          setState(() {
-            _shakeCount += 1;
-          });
-          _triggerShakeAnimation();
-
-          if (_isLocked && _pickedSurah != null) {
-            return;
-          }
-
-          _pickRandomSurah(list);
-        },
-        onError: (_) {
-          if (!mounted) return;
-          setState(() {
-            _sensorAvailable = false;
-            _isListening = false;
-          });
-        },
-        cancelOnError: false,
-      );
-    } on MissingPluginException {
-      setState(() {
-        _sensorAvailable = false;
-        _isListening = false;
-      });
-    } catch (_) {
-      setState(() {
-        _sensorAvailable = false;
-        _isListening = false;
-      });
-    }
-  }
-
-  void _triggerShakeAnimation() {
+  void _onControllerChanged() {
     if (!mounted) return;
-    setState(() {
-      _shakePulse = true;
-    });
-    Future.delayed(const Duration(milliseconds: 180), () {
-      if (!mounted) return;
-      setState(() {
-        _shakePulse = false;
-      });
-    });
-  }
-
-  void _pickRandomSurah(List<Surah> list) {
-    Surah selected = list[_random.nextInt(list.length)];
-    if (_pickedSurah != null && list.length > 1) {
-      while (selected.nomor == _pickedSurah!.nomor) {
-        selected = list[_random.nextInt(list.length)];
-      }
-    }
-
-    setState(() {
-      _pickedSurah = selected;
-      _history.removeWhere((s) => s.nomor == selected.nomor);
-      _history.insert(0, selected);
-      if (_history.length > 5) {
-        _history.removeRange(5, _history.length);
-      }
-    });
+    setState(() {});
   }
 
   void _toggleListening() {
-    if (!_sensorAvailable) {
+    final message = _controller.toggleListening();
+    if (message != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Sensor belum aktif pada sesi ini. Lakukan full restart aplikasi.',
-          ),
-        ),
+        SnackBar(content: Text(message)),
       );
-      return;
     }
-
-    setState(() {
-      _isListening = !_isListening;
-    });
   }
 
   Future<void> _manualRandomPick() async {
-    final list = await _surahFuture;
-    if (!mounted || list == null || list.isEmpty) return;
-    _pickRandomSurah(list);
-    _triggerShakeAnimation();
+    await _controller.manualRandomPick();
   }
 
   Future<void> _refreshSurah() async {
-    setState(() {
-      _surahFuture = EQuranService.instance.getSurahList();
-      _pickedSurah = null;
-      _shakeCount = 0;
-      _history.clear();
-    });
-    await _surahFuture;
+    await _controller.refreshSurah();
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Surah>>(
-      future: _surahFuture,
+      future: _controller.surahFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -189,19 +72,18 @@ class _ShakeSurahViewState extends State<ShakeSurahView> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             children: [
               _HeroShakeCard(
-                listening: _isListening,
-                locked: _isLocked,
-                sensorAvailable: _sensorAvailable,
-                shakeCount: _shakeCount,
-                thresholdG: _thresholdG,
+                listening: _controller.isListening,
+                locked: _controller.isLocked,
+                sensorAvailable: _controller.sensorAvailable,
+                shakeCount: _controller.shakeCount,
+                thresholdG: _controller.thresholdG,
                 onToggle: _toggleListening,
                 onRandomNow: _manualRandomPick,
-                onLockToggle: (value) => setState(() => _isLocked = value),
-                onThresholdChanged: (value) =>
-                    setState(() => _thresholdG = value),
+                onLockToggle: _controller.setLock,
+                onThresholdChanged: _controller.setThreshold,
               ),
               const SizedBox(height: 14),
-              if (_pickedSurah == null)
+              if (_controller.pickedSurah == null)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -210,7 +92,7 @@ class _ShakeSurahViewState extends State<ShakeSurahView> {
                     border: Border.all(color: const Color(0xFFE2E8EE)),
                   ),
                   child: Text(
-                    !_sensorAvailable
+                    !_controller.sensorAvailable
                         ? 'Sensor belum tersedia pada sesi ini.\nLakukan full restart aplikasi, lalu buka menu Shake Surah kembali.'
                         : surahList.isEmpty
                         ? 'Data surah belum tersedia.'
@@ -232,12 +114,12 @@ class _ShakeSurahViewState extends State<ShakeSurahView> {
                     const SizedBox(height: 10),
                     AnimatedScale(
                       duration: const Duration(milliseconds: 160),
-                      scale: _shakePulse ? 1.035 : 1.0,
+                      scale: _controller.shakePulse ? 1.035 : 1.0,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: _shakePulse
+                          boxShadow: _controller.shakePulse
                               ? [
                                   BoxShadow(
                                     color: const Color(
@@ -249,19 +131,19 @@ class _ShakeSurahViewState extends State<ShakeSurahView> {
                                 ]
                               : const [],
                         ),
-                        child: SurahCard(surah: _pickedSurah!),
+                        child: SurahCard(surah: _controller.pickedSurah!),
                       ),
                     ),
                   ],
                 ),
-              if (_history.isNotEmpty) ...[
+              if (_controller.history.isNotEmpty) ...[
                 const SizedBox(height: 18),
                 const Text(
                   'Riwayat 5 Hasil Terakhir',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
                 ),
                 const SizedBox(height: 10),
-                ..._history.map(
+                ..._controller.history.map(
                   (surah) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: SurahCard(surah: surah),

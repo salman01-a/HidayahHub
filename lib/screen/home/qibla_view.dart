@@ -1,10 +1,7 @@
-import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_compass/flutter_compass.dart';
-import 'package:geolocator/geolocator.dart';
+
+import '../../controllers/qibla_controller.dart';
 
 class QiblaView extends StatefulWidget {
   const QiblaView({super.key});
@@ -14,144 +11,33 @@ class QiblaView extends StatefulWidget {
 }
 
 class _QiblaViewState extends State<QiblaView> {
-  static const double _kaabaLat = 21.4225;
-  static const double _kaabaLon = 39.8262;
-
-  CameraController? _cameraController;
-  StreamSubscription<CompassEvent>? _compassSub;
-
-  double? _heading;
-  double? _qiblaBearing;
-  double? _currentLatitude;
-  double? _currentLongitude;
-  bool _isLoading = true;
-  String? _statusMessage;
+  late final QiblaController _controller;
 
   @override
   void initState() {
     super.initState();
-    _initialize();
+    _controller = QiblaController();
+    _controller.addListener(_onControllerChanged);
+    _controller.initialize();
   }
 
   @override
   void dispose() {
-    _compassSub?.cancel();
-    _cameraController?.dispose();
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _initialize() async {
-    setState(() {
-      _isLoading = true;
-      _statusMessage = null;
-    });
-
-    await _initializeCamera();
-    await _initializeLocationAndQibla();
-    _startCompassStream();
-
+  void _onControllerChanged() {
     if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _initializeCamera() async {
-    try {
-      final cameras = await availableCameras();
-      final backCamera = cameras.where(
-        (cam) => cam.lensDirection == CameraLensDirection.back,
-      );
-      final selected = backCamera.isNotEmpty ? backCamera.first : cameras.first;
-
-      final controller = CameraController(
-        selected,
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
-      await controller.initialize();
-
-      if (!mounted) return;
-      _cameraController = controller;
-    } catch (_) {
-      _statusMessage =
-          'Kamera tidak tersedia. Kompas tetap bisa dipakai tanpa tampilan kamera.';
-    }
-  }
-
-  Future<void> _initializeLocationAndQibla() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _statusMessage = 'Aktifkan layanan lokasi untuk menentukan arah kiblat.';
-      return;
-    }
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      _statusMessage = 'Izin lokasi diperlukan agar arah kiblat akurat.';
-      return;
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-      _currentLatitude = position.latitude;
-      _currentLongitude = position.longitude;
-      _qiblaBearing = _bearingToKaaba(position.latitude, position.longitude);
-    } catch (_) {
-      _statusMessage = 'Gagal mendapatkan lokasi. Coba lagi beberapa saat.';
-    }
-  }
-
-  void _startCompassStream() {
-    _compassSub = FlutterCompass.events?.listen((event) {
-      final heading = event.heading;
-      if (heading == null || !mounted) return;
-      setState(() {
-        _heading = _normalize(heading);
-      });
-    });
-  }
-
-  double _bearingToKaaba(double lat, double lon) {
-    final phi1 = _toRad(lat);
-    final phi2 = _toRad(_kaabaLat);
-    final deltaLon = _toRad(_kaabaLon - lon);
-
-    final y = math.sin(deltaLon);
-    final x =
-        math.cos(phi1) * math.tan(phi2) - math.sin(phi1) * math.cos(deltaLon);
-
-    return _normalize(_toDeg(math.atan2(y, x)));
-  }
-
-  double _normalize(double value) {
-    return (value % 360 + 360) % 360;
-  }
-
-  double _toRad(double deg) => deg * math.pi / 180;
-
-  double _toDeg(double rad) => rad * 180 / math.pi;
-
-  double _angleDiff(double from, double to) {
-    return ((to - from + 540) % 360) - 180;
-  }
-
-  bool get _isAligned {
-    if (_heading == null || _qiblaBearing == null) return false;
-    return _angleDiff(_heading!, _qiblaBearing!).abs() <= 8;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final cameraReady =
-        _cameraController != null && _cameraController!.value.isInitialized;
+        _controller.cameraController != null &&
+        _controller.cameraController!.value.isInitialized;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -159,7 +45,7 @@ class _QiblaViewState extends State<QiblaView> {
         children: [
           Positioned.fill(
             child: cameraReady
-                ? CameraPreview(_cameraController!)
+                ? CameraPreview(_controller.cameraController!)
                 : Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -225,9 +111,9 @@ class _QiblaViewState extends State<QiblaView> {
               ),
             ),
           ),
-          if (_heading != null)
+          if (_controller.heading != null)
             Text(
-              '${_heading!.round()}°',
+              '${_controller.heading!.round()}°',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -240,12 +126,12 @@ class _QiblaViewState extends State<QiblaView> {
   }
 
   Widget _compassDial() {
-    if (_isLoading) {
+    if (_controller.isLoading) {
       return const CircularProgressIndicator(color: Colors.white);
     }
 
-    final heading = _heading;
-    final qibla = _qiblaBearing;
+    final heading = _controller.heading;
+    final qibla = _controller.qiblaBearing;
 
     if (heading == null || qibla == null) {
       return Container(
@@ -261,7 +147,7 @@ class _QiblaViewState extends State<QiblaView> {
       );
     }
 
-    final relativeQibla = _angleDiff(heading, qibla);
+    final relativeQibla = _controller.angleDiff(heading, qibla);
 
     return Column(
       children: [
@@ -284,7 +170,7 @@ class _QiblaViewState extends State<QiblaView> {
                 ),
               ),
               Transform.rotate(
-                angle: _toRad(relativeQibla),
+                angle: _controller.toRad(relativeQibla),
                 child: const Icon(
                   Icons.navigation_rounded,
                   size: 92,
@@ -319,23 +205,23 @@ class _QiblaViewState extends State<QiblaView> {
 
   Widget _buildCoordinateInfo() {
     String latitudeText() {
-      final latitude = _currentLatitude;
+      final latitude = _controller.currentLatitude;
       if (latitude == null) return '--';
-      return _toDms(latitude);
+      return _controller.toDms(latitude);
     }
 
     String longitudeText() {
-      final longitude = _currentLongitude;
+      final longitude = _controller.currentLongitude;
       if (longitude == null) return '--';
-      return _toDms(longitude);
+      return _controller.toDms(longitude);
     }
 
-    final latitudeLabel = _currentLatitude == null
+    final latitudeLabel = _controller.currentLatitude == null
         ? 'LS'
-        : (_currentLatitude! >= 0 ? 'LU' : 'LS');
-    final longitudeLabel = _currentLongitude == null
+        : (_controller.currentLatitude! >= 0 ? 'LU' : 'LS');
+    final longitudeLabel = _controller.currentLongitude == null
         ? 'BT'
-        : (_currentLongitude! >= 0 ? 'BT' : 'BB');
+        : (_controller.currentLongitude! >= 0 ? 'BT' : 'BB');
 
     Widget buildItem(String label, String value) {
       return Column(
@@ -378,54 +264,57 @@ class _QiblaViewState extends State<QiblaView> {
     );
   }
 
-  String _toDms(double decimal) {
-    final absValue = decimal.abs();
-    final degree = absValue.floor();
-    final minuteRaw = (absValue - degree) * 60;
-    final minute = minuteRaw.floor();
-    var second = ((minuteRaw - minute) * 60).round();
-
-    var d = degree;
-    var m = minute;
-    if (second == 60) {
-      second = 0;
-      m += 1;
-    }
-    if (m == 60) {
-      m = 0;
-      d += 1;
-    }
-
-    return '$d°${m.toString().padLeft(2, '0')}\'${second.toString().padLeft(2, '0')}"';
-  }
-
   Widget _statusBanner() {
-    final customStatus = _statusMessage;
-    if (_isLoading) {
+    final customStatus = _controller.statusMessage;
+    if (_controller.isLoading) {
       return _buildBanner(
         message: 'Menyiapkan kamera, kompas, dan lokasi...',
         aligned: false,
       );
     }
-    if (customStatus != null && (_qiblaBearing == null || _heading == null)) {
+    if (customStatus != null &&
+        (_controller.qiblaBearing == null || _controller.heading == null)) {
       return _buildBanner(message: customStatus, aligned: false);
     }
 
-    if (_heading == null || _qiblaBearing == null) {
+    if (_controller.heading == null || _controller.qiblaBearing == null) {
+      if (_controller.locationServiceDisabled) {
+        return _buildBanner(
+          message: customStatus ??
+              'Aktifkan layanan lokasi untuk menentukan arah kiblat.',
+          aligned: false,
+          actionLabel: 'Aktifkan Lokasi',
+          onActionPressed: _controller.openLocationSettingsAndRefresh,
+        );
+      }
+
+      if (_controller.locationPermissionDeniedForever) {
+        return _buildBanner(
+          message:
+              'Izin lokasi diblokir permanen. Buka pengaturan aplikasi untuk mengizinkan lokasi.',
+          aligned: false,
+          actionLabel: 'Buka Pengaturan',
+          onActionPressed: _controller.openAppSettingsAndRefresh,
+        );
+      }
+
       return _buildBanner(
         message: 'Gerakkan ponsel untuk kalibrasi kompas.',
         aligned: false,
       );
     }
 
-    if (_isAligned) {
+    if (_controller.isAligned) {
       return _buildBanner(
         message: 'Arah kiblat Anda sudah tepat. Silakan sholat menghadap arah ini.',
         aligned: true,
       );
     }
 
-    final diff = _angleDiff(_heading!, _qiblaBearing!);
+    final diff = _controller.angleDiff(
+      _controller.heading!,
+      _controller.qiblaBearing!,
+    );
     final side = diff > 0 ? 'kanan' : 'kiri';
 
     return _buildBanner(
@@ -435,7 +324,12 @@ class _QiblaViewState extends State<QiblaView> {
     );
   }
 
-  Widget _buildBanner({required String message, required bool aligned}) {
+  Widget _buildBanner({
+    required String message,
+    required bool aligned,
+    String? actionLabel,
+    Future<void> Function()? onActionPressed,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 18),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -467,6 +361,20 @@ class _QiblaViewState extends State<QiblaView> {
               ),
             ),
           ),
+          if (actionLabel != null && onActionPressed != null) ...[
+            const SizedBox(width: 10),
+            TextButton(
+              onPressed: () async {
+                await onActionPressed();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.55)),
+                textStyle: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              child: Text(actionLabel),
+            ),
+          ],
         ],
       ),
     );

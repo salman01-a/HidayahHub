@@ -27,6 +27,11 @@ class AppEnv {
     fallback: 'https://nominatim.openstreetmap.org/reverse',
   );
 
+  static String get osrmRouteBaseUrl => _read(
+    'OSRM_ROUTE_BASE_URL',
+    fallback: 'https://router.project-osrm.org/route/v1/driving',
+  );
+
   static String get geminiApiKey => _read('GEMINI_API_KEY');
 
   static void ensureRequired() {

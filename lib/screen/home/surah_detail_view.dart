@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
 
+import '../../controllers/surah_detail_controller.dart';
 import '../../models/surah.dart';
 import '../../models/surah_detail.dart';
-import '../../services/equran_service.dart';
-import '../../services/surah_read_bookmark_service.dart';
 
 class SurahDetailView extends StatefulWidget {
   final Surah surah;
@@ -17,12 +14,7 @@ class SurahDetailView extends StatefulWidget {
 }
 
 class _SurahDetailViewState extends State<SurahDetailView> {
-  late Future<SurahDetail> _detailFuture;
-  AudioPlayer? _audioPlayer;
-  int? _playingAyat;
-  bool _isPlaying = false;
-  int? _bookmarkedAyat;
-  bool _audioReady = false;
+  late final SurahDetailController _controller;
 
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _targetKey = GlobalKey();
@@ -31,20 +23,26 @@ class _SurahDetailViewState extends State<SurahDetailView> {
   @override
   void initState() {
     super.initState();
-    _detailFuture = EQuranService.instance.getSurahDetail(widget.surah.nomor);
-    _initAudioSafe();
-    _loadBookmark();
+    _controller = SurahDetailController();
+    _controller.addListener(_onControllerChanged);
+    _controller.initialize(widget.surah.nomor);
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
     _scrollController.dispose();
-    _audioPlayer?.dispose();
     super.dispose();
   }
 
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   void _scrollToBookmark() {
-    if (_bookmarkedAyat != null && !_hasScrolled) {
+    if (_controller.bookmarkedAyat != null && !_hasScrolled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_targetKey.currentContext != null) {
           Scrollable.ensureVisible(
@@ -58,122 +56,27 @@ class _SurahDetailViewState extends State<SurahDetailView> {
     }
   }
 
-  void _initAudioSafe() {
-    try {
-      final player = AudioPlayer();
-      player.onPlayerStateChanged.listen((state) {
-        if (!mounted) return;
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-        });
-      });
-      player.onPlayerComplete.listen((_) {
-        if (!mounted) return;
-        setState(() {
-          _playingAyat = null;
-          _isPlaying = false;
-        });
-      });
-
-      _audioPlayer = player;
-      _audioReady = true;
-    } on MissingPluginException {
-      _audioReady = false;
-    } catch (_) {
-      _audioReady = false;
-    }
-  }
-
   Future<void> _reload() async {
-    setState(() {
-      _hasScrolled = false;
-      _detailFuture = EQuranService.instance.getSurahDetail(widget.surah.nomor);
-    });
-    await _detailFuture;
-  }
-
-  Future<void> _loadBookmark() async {
-    final ayat = await SurahReadBookmarkService.instance.getBookmarkAyat(
-      widget.surah.nomor,
-    );
-    if (!mounted) return;
-    setState(() {
-      _bookmarkedAyat = ayat;
-    });
+    _hasScrolled = false;
+    await _controller.refresh(widget.surah.nomor);
   }
 
   Future<void> _toggleAudio(SurahAyat ayat) async {
-    if (!_audioReady || _audioPlayer == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Fitur audio belum aktif pada sesi ini. Tutup aplikasi lalu jalankan ulang.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final url = ayat.preferredAudioUrl;
-    if (url == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Audio ayat belum tersedia.')),
-      );
-      return;
-    }
-
-    if (_playingAyat == ayat.nomorAyat && _isPlaying) {
-      await _audioPlayer!.pause();
-      return;
-    }
-
-    if (_playingAyat == ayat.nomorAyat && !_isPlaying) {
-      await _audioPlayer!.resume();
-      return;
-    }
-
-    try {
-      await _audioPlayer!.stop();
-      setState(() {
-        _playingAyat = ayat.nomorAyat;
-      });
-      await _audioPlayer!.play(UrlSource(url));
-    } on MissingPluginException {
-      if (!mounted) return;
-      setState(() {
-        _audioReady = false;
-        _playingAyat = null;
-        _isPlaying = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Plugin audio belum siap. Lakukan full restart aplikasi.',
-          ),
-        ),
-      );
-    }
+    final message = await _controller.toggleAudio(ayat);
+    if (!mounted || message == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _markAsLastRead(SurahAyat ayat) async {
-    final isSaved = await SurahReadBookmarkService.instance.toggleBookmark(
+    final message = await _controller.markAsLastRead(
       surahNo: widget.surah.nomor,
-      ayat: ayat.nomorAyat,
+      ayat: ayat,
     );
-    if (!mounted) return;
-    setState(() {
-      _bookmarkedAyat = isSaved ? ayat.nomorAyat : null;
-    });
+    if (!mounted || message.isEmpty) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isSaved
-              ? 'Ayat ${ayat.nomorAyat} disimpan sebagai terakhir dibaca.'
-              : 'Bookmark ayat ${ayat.nomorAyat} dihapus.',
-        ),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -188,7 +91,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
         foregroundColor: Colors.white,
       ),
       body: FutureBuilder<SurahDetail>(
-        future: _detailFuture,
+        future: _controller.detailFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -237,7 +140,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                 if (index == 0) {
                   return _SurahHeader(
                     detail: detail,
-                    bookmarkedAyat: _bookmarkedAyat,
+                    bookmarkedAyat: _controller.bookmarkedAyat,
                   );
                 }
 
@@ -246,12 +149,15 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                 }
 
                 final ayat = detail.ayat[index - 2];
-                final isThisBookmarked = _bookmarkedAyat == ayat.nomorAyat;
+                final isThisBookmarked =
+                    _controller.bookmarkedAyat == ayat.nomorAyat;
 
                 return _AyatCard(
                   key: isThisBookmarked ? _targetKey : null,
                   ayat: ayat,
-                  isPlaying: _playingAyat == ayat.nomorAyat && _isPlaying,
+                  isPlaying:
+                      _controller.playingAyat == ayat.nomorAyat &&
+                      _controller.isPlaying,
                   isBookmarked: isThisBookmarked,
                   onPlayTap: () => _toggleAudio(ayat),
                   onBookmarkTap: () => _markAsLastRead(ayat),

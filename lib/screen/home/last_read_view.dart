@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../models/surah.dart';
-import '../../services/equran_service.dart';
-import '../../services/surah_read_bookmark_service.dart';
+import '../../controllers/last_read_controller.dart';
 import 'surah_detail_view.dart';
 
 class LastReadView extends StatefulWidget {
@@ -13,53 +11,40 @@ class LastReadView extends StatefulWidget {
 }
 
 class _LastReadViewState extends State<LastReadView> {
-  late Future<List<_LastReadItem>> _future;
+  late final LastReadController _controller;
 
   @override
   void initState() {
     super.initState();
-    _future = _loadItems();
+    _controller = LastReadController();
+    _controller.addListener(_onControllerChanged);
   }
 
-  Future<List<_LastReadItem>> _loadItems() async {
-    final bookmarks = await SurahReadBookmarkService.instance
-        .loadAllBookmarks();
-    if (bookmarks.isEmpty) return const <_LastReadItem>[];
-
-    final surahList = await EQuranService.instance.getSurahList();
-    final items =
-        surahList
-            .where((surah) => bookmarks.containsKey(surah.nomor))
-            .map(
-              (surah) =>
-                  _LastReadItem(surah: surah, ayat: bookmarks[surah.nomor]!),
-            )
-            .toList(growable: false)
-          ..sort((a, b) => a.surah.nomor.compareTo(b.surah.nomor));
-
-    return items;
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
+    super.dispose();
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _future = _loadItems();
-    });
-    await _future;
+  void _onControllerChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
-  Future<void> _deleteBookmark(_LastReadItem item) async {
-    await SurahReadBookmarkService.instance.clearBookmark(item.surah.nomor);
+  Future<void> _deleteBookmark(LastReadItem item) async {
+    final message = await _controller.deleteBookmark(item);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Bookmark ${item.surah.namaLatin} dihapus.')),
+      SnackBar(content: Text(message)),
     );
-    await _refresh();
+    await _controller.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<_LastReadItem>>(
-      future: _future,
+    return FutureBuilder<List<LastReadItem>>(
+      future: _controller.itemsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -80,7 +65,7 @@ class _LastReadViewState extends State<LastReadView> {
                   ),
                   const SizedBox(height: 14),
                   FilledButton(
-                    onPressed: _refresh,
+                    onPressed: _controller.refresh,
                     child: const Text('Coba Lagi'),
                   ),
                 ],
@@ -89,10 +74,10 @@ class _LastReadViewState extends State<LastReadView> {
           );
         }
 
-        final items = snapshot.data ?? const <_LastReadItem>[];
+        final items = snapshot.data ?? const <LastReadItem>[];
         if (items.isEmpty) {
           return RefreshIndicator(
-            onRefresh: _refresh,
+            onRefresh: _controller.refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: const [
@@ -112,7 +97,7 @@ class _LastReadViewState extends State<LastReadView> {
         }
 
         return RefreshIndicator(
-          onRefresh: _refresh,
+          onRefresh: _controller.refresh,
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -134,7 +119,7 @@ class _LastReadViewState extends State<LastReadView> {
                       ),
                     );
                     if (!mounted) return;
-                    await _refresh();
+                    await _controller.refresh();
                   },
                   leading: CircleAvatar(
                     backgroundColor: const Color(0xFFE4F2EC),
@@ -168,11 +153,4 @@ class _LastReadViewState extends State<LastReadView> {
       },
     );
   }
-}
-
-class _LastReadItem {
-  final Surah surah;
-  final int ayat;
-
-  const _LastReadItem({required this.surah, required this.ayat});
 }

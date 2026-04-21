@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;  
+import 'package:latlong2/latlong.dart';
 
 import '../config/app_env.dart';
 import '../models/nearby_mosque.dart';
+import '../models/nearby_route.dart';
 
 class NearbyMosqueService {
   NearbyMosqueService._();
@@ -98,6 +100,56 @@ out center tags;
     }
 
     return enriched;
+  }
+
+  Future<NearbyRoute> getRoadRoute({
+    required LatLng start,
+    required LatLng destination,
+  }) async {
+    final uri = Uri.parse(
+      '${AppEnv.osrmRouteBaseUrl}/'
+      '${start.longitude},${start.latitude};'
+      '${destination.longitude},${destination.latitude}'
+      '?overview=full&geometries=geojson',
+    );
+
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('Routing gagal dimuat (${response.statusCode})');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final routes = data['routes'] as List<dynamic>?;
+    if (routes == null || routes.isEmpty) {
+      throw Exception('Rute tidak ditemukan');
+    }
+
+    final route = routes.first as Map<String, dynamic>;
+    final geometry = route['geometry'] as Map<String, dynamic>?;
+    final coordinates = geometry?['coordinates'] as List<dynamic>?;
+    if (coordinates == null || coordinates.isEmpty) {
+      throw Exception('Geometri rute kosong');
+    }
+
+    final routePoints = coordinates
+        .map((coord) {
+          final pair = coord as List<dynamic>;
+          return LatLng(
+            (pair[1] as num).toDouble(),
+            (pair[0] as num).toDouble(),
+          );
+        })
+        .toList(growable: false);
+
+    final distanceKm = ((route['distance'] as num?)?.toDouble() ?? 0) / 1000;
+    final durationMin =
+        (((route['duration'] as num?)?.toDouble() ?? 0) / 60).round();
+
+    return NearbyRoute(
+      points: routePoints,
+      distanceKm: distanceKm,
+      durationMin: durationMin,
+    );
   }
 
   Future<String?> _reverseGeocode({

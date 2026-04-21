@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/session_service.dart';
 
 import 'home_page.dart';
 import 'login_page.dart';
@@ -13,8 +13,7 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
-  static const String _sessionLoggedInKey = 'session_logged_in';
-  static const String _sessionUserNameKey = 'session_user_name';
+  final SessionService _sessionService = SessionService.instance;
 
   late final AnimationController _introController;
   late final AnimationController _ambientController;
@@ -116,9 +115,8 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   }
 
   Future<void> _checkSessionAndNavigate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool(_sessionLoggedInKey) ?? false;
-    final userName = prefs.getString(_sessionUserNameKey) ?? '';
+    final isLoggedIn = await _sessionService.isLoggedIn();
+    final userName = (await _sessionService.getSessionUserName()) ?? '';
 
     if (!isLoggedIn || userName.trim().isEmpty || !mounted) {
       return;
