@@ -125,18 +125,18 @@ class _HomePageState extends State<HomePage> {
       case HomeFeatureAction.miniGames:
         _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;
-      case HomeFeatureAction.notifSholat:
-        // _showFeatureInfo(
-        //   'Notifikasi Pengingat Sholat',
-        //   'Butuh local notifications dan penjadwalan alarm.',
-        // );
+      // case HomeFeatureAction.notifSholat:
+      //   // _showFeatureInfo(
+      //   //   'Notifikasi Pengingat Sholat',
+      //   //   'Butuh local notifications dan penjadwalan alarm.',
+      //   // );
 
-        _openFeaturePage(
-          'Notifikasi Sholat',
-          PrayerNotificationView(controller: _dashboardController),
-        );
+      //   _openFeaturePage(
+      //     'Notifikasi Sholat',
+      //     PrayerNotificationView(controller: _dashboardController),
+      //   );
 
-        break;
+      //   break;
     }
   }
 
@@ -387,10 +387,11 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-            onPressed: () => _showFeatureInfo(
-              'Notifikasi',
-              'Panel notifikasi akan dihubungkan ke pengingat sholat.',
+            onPressed: () => _openFeaturePage(
+              'Notifikasi Sholat',
+              PrayerNotificationView(controller: _dashboardController),
             ),
+
             icon: const Icon(
               Icons.notifications_none_rounded,
               color: Color(0xFF1B4D6A),

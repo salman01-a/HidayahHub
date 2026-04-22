@@ -81,13 +81,13 @@ class HomeController extends ChangeNotifier {
       action: HomeFeatureAction.miniGames,
       availableNow: false,
     ),
-    HomeFeature(
-      title: 'Notif Sholat',
-      icon: Icons.notifications_active_outlined,
-      color: Color(0xFF4BA890),
-      action: HomeFeatureAction.notifSholat,
-      availableNow: false,
-    ),
+    // HomeFeature(
+    //   title: 'Notif Sholat',
+    //   icon: Icons.notifications_active_outlined,
+    //   color: Color(0xFF4BA890),
+    //   action: HomeFeatureAction.notifSholat,
+    //   availableNow: false,
+    // ),
   ];
 
   void refreshDashboardSignal() {

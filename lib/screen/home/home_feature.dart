@@ -12,7 +12,7 @@ enum HomeFeatureAction {
   arahKiblat,
   shakeSurah,
   miniGames,
-  notifSholat,
+  // notifSholat,
 }
 
 class HomeFeature {
