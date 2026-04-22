@@ -74,5 +74,9 @@
 	<string>Aplikasi memerlukan lokasi agar arah kiblat lebih akurat.</string>
 	<key>GoogleMapsApiKey</key>
 	<string>$(MAPS_API_KEY)</string>
+	<key>NSAppTransportSecurity</key>
+<dict>
+   <key>NSAllowsArbitraryLoads</key><true/>
+</dict>
 </dict>
 </plist>

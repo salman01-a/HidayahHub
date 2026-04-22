@@ -32,16 +32,18 @@ class AppEnv {
     fallback: 'https://router.project-osrm.org/route/v1/driving',
   );
 
+  static String get exchangeRateUrl => _read(
+    'EXCHANGE_RATE_URL',
+    fallback: 'https://api.exchangerate-api.com/v4/latest/IDR',
+  );
+
   static String get geminiApiKey => _read('GEMINI_API_KEY');
 
   static String get googleMapsApiKey => _read('GOOGLE_MAPS_API_KEY');
 
-
   static void ensureRequired() {
     if (geminiApiKey.isEmpty) {
-      throw StateError(
-        'GEMINI_API_KEY belum diatur di file .env',
-      );
+      throw StateError('GEMINI_API_KEY belum diatur di file .env');
     }
   }
 }

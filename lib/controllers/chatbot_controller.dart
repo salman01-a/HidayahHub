@@ -43,7 +43,7 @@ class ChatbotController extends ChangeNotifier {
     } catch (e) {
       _messages.add(
         ChatMessage(
-          text: 'Maaf, terjadi kesalahan jaringan: $e',
+          text: 'Maaf, terjadi kesalahan silahkan coba lagi di esok hari',
           isUser: false,
           timestamp: DateTime.now(),
         ),

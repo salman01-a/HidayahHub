@@ -112,9 +112,7 @@ class _MinigameViewState extends State<MinigameView> {
                         _controller.selectedDifficulty == difficulty;
                     return ChoiceChip(
                       selected: isSelected,
-                      label: Text(
-                        '${difficulty.label} (${difficulty.questionCount} soal)',
-                      ),
+                      label: Text('${difficulty.label}'),
                       onSelected: (_) => _controller.setDifficulty(difficulty),
                       selectedColor: const Color(0xFFD6F2EC),
                       side: BorderSide(

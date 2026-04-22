@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hidayahhub/screen/home/notification_view.dart';
+import 'package:hidayahhub/screen/home/zakat_view.dart';
 
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
@@ -100,10 +101,12 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Chatbot', const ChatbotView());
         break;
       case HomeFeatureAction.zakatDonasi:
-        _showFeatureInfo(
-          'Zakat & Donasi',
-          'Tambahkan kalkulator zakat dan integrasi payment gateway.',
-        );
+        // _showFeatureInfo(
+        //   'Zakat & Donasi',
+        //   'Tambahkan kalkulator zakat dan integrasi payment gateway.',
+        // );
+        _openFeaturePage("Kalkulator Zakat", const ZakatView());
+
         break;
       case HomeFeatureAction.jadwalDunia:
         _showFeatureInfo(
@@ -388,7 +391,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             onPressed: () => _openFeaturePage(
-              'Notifikasi Sholat',
+              'Notifikasi',
               PrayerNotificationView(controller: _dashboardController),
             ),
 
