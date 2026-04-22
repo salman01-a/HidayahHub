@@ -18,7 +18,9 @@ import 'login_page.dart';
 import 'home/chatbot_view.dart';
 import 'home/minigames_view.dart';
 import '../services/session_service.dart';
+import 'dart:io';
 
+import '../controllers/auth_controller.dart';
 import '../controllers/dashboard_controller.dart';
 
 class HomePage extends StatefulWidget {
@@ -35,12 +37,15 @@ class _HomePageState extends State<HomePage> {
   final SessionService _sessionService = SessionService.instance;
   late String _currentUserName;
   late final DashboardController _dashboardController = DashboardController();
+
+  String _profilePath = 'assets/profile/default.png';
   @override
   void initState() {
     super.initState();
     _controller = HomeController();
     _controller.addListener(_onControllerChanged);
     _currentUserName = widget.userName;
+    _loadProfileImage();
   }
 
   @override
@@ -53,6 +58,28 @@ class _HomePageState extends State<HomePage> {
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _loadProfileImage() async {
+    final email = await _sessionService.getLastEmail();
+    if (email != null) {
+      final user = await AuthController.instance.getUserByEmail(email);
+      if (user != null && mounted) {
+        setState(() {
+          _profilePath = user.profilePath;
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshProfileData() async {
+    final name = await _sessionService.getSessionUserName();
+    if (name != null && mounted) {
+      setState(() {
+        _currentUserName = name;
+      });
+    }
+    _loadProfileImage();
   }
 
   void _onHomeFeatureTap(HomeFeature feature) {
@@ -313,14 +340,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _refreshProfileData() async {
-    final name = await _sessionService.getSessionUserName();
-    if (name != null && mounted) {
-      setState(() {
-        _currentUserName = name;
-      });
-    }
-  }
+  // Future<void> _refreshProfileData() async {
+  //   final name = await _sessionService.getSessionUserName();
+  //   if (name != null && mounted) {
+  //     setState(() {
+  //       _currentUserName = name;
+  //     });
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -352,11 +379,12 @@ class _HomePageState extends State<HomePage> {
               decoration: BoxDecoration(
                 color: const Color(0xFFE6F1F9),
                 borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Color(0xFF1F5577),
-                size: 20,
+                image: DecorationImage(
+                  image: _profilePath.startsWith('assets/')
+                      ? AssetImage(_profilePath) as ImageProvider
+                      : FileImage(File(_profilePath)),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             const SizedBox(width: 9),

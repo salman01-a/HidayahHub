@@ -7,20 +7,31 @@ class UserModel {
   final String name;
   final String email;
   final String passwordHash;
+  final String profilePath;
 
-  UserModel({this.id, required this.name, required this.email, required this.passwordHash});
+  UserModel({
+    this.id,
+    required this.name,
+    required this.email,
+    required this.passwordHash,
+    this.profilePath = 'assets/profile/default.png',
+  });
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'name': name,
       'email': email,
       'password': passwordHash,
+      'profilePath': profilePath,
     };
     if (id != null) map['id'] = id;
     return map;
   }
 
   factory UserModel.fromMap(Map<String, dynamic> m) {
+    String pPath = m['profilePath'] as String? ?? 'assets/profile/default.png';
+    if (pPath == 'assets/default.png') pPath = 'assets/profile/default.png';
+
     return UserModel(
       id: m['id'] as int?,
       name: m['name'] as String? ?? '',
@@ -36,12 +47,18 @@ class UserModel {
   }
 
   /// Convenience factory to create user from plain password (it will be hashed)
-  factory UserModel.create({int? id, required String name, required String email, required String password}) {
+  factory UserModel.create({
+    int? id,
+    required String name,
+    required String email,
+    required String password,
+  }) {
     return UserModel(
       id: id,
       name: name,
       email: email,
       passwordHash: hashPassword(password),
+      profilePath: 'assets/profile/default.png',
     );
   }
 }

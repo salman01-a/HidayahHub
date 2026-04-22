@@ -86,6 +86,10 @@ class AuthController {
 
       final currentUser = await _db.getUserByEmail(email);
       String finalHash = currentUser?.passwordHash ?? '';
+      String finalProfilePath =
+          profilePath ??
+          currentUser?.profilePath ??
+          'assets/profile/default.png';
 
       if (password != null && password.isNotEmpty) {
         finalHash = UserModel.hashPassword(password);
@@ -96,6 +100,7 @@ class AuthController {
         name: name,
         email: email,
         passwordHash: finalHash,
+        profilePath: finalProfilePath,
       );
 
       await _db.updateUser(updatedUser);

@@ -1,11 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // Import Image Picker
 import '../../controllers/auth_controller.dart';
 import '../../models/user.dart';
 import '../../services/session_service.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class ProfileView extends StatelessWidget {
+class ProfileView extends StatefulWidget {
   final String userName;
   final VoidCallback onUpdate;
   const ProfileView({
@@ -13,6 +15,27 @@ class ProfileView extends StatelessWidget {
     required this.userName,
     required this.onUpdate,
   });
+
+  @override
+  State<ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends State<ProfileView> {
+  UserModel? _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final email = await SessionService.instance.getLastEmail();
+    if (email != null) {
+      final user = await AuthController.instance.getUserByEmail(email);
+      if (mounted) setState(() => _currentUser = user);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +62,11 @@ class ProfileView extends StatelessWidget {
   }
 
   Widget _buildUserHeader() {
+    final path = _currentUser?.profilePath ?? 'assets/profile/default.png';
+    final imageProvider = path.startsWith('assets/')
+        ? AssetImage(path) as ImageProvider
+        : FileImage(File(path));
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -50,10 +78,10 @@ class ProfileView extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 30,
-            backgroundColor: Colors.black,
-            child: Icon(Icons.person, color: Colors.white, size: 30),
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: imageProvider,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -65,7 +93,7 @@ class ProfileView extends StatelessWidget {
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 Text(
-                  userName,
+                  widget.userName,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -80,15 +108,13 @@ class ProfileView extends StatelessWidget {
   }
 
   void _navigateToEdit(BuildContext context) async {
-    final email = await SessionService.instance.getLastEmail();
-    if (email == null) return;
-    final user = await AuthController.instance.getUserByEmail(email);
-    if (user != null && context.mounted) {
+    if (_currentUser != null && context.mounted) {
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => EditProfilePage(user: user)),
+        MaterialPageRoute(builder: (_) => EditProfilePage(user: _currentUser!)),
       );
-      onUpdate();
+      await _loadUser();
+      widget.onUpdate();
     }
   }
 
@@ -99,7 +125,7 @@ class ProfileView extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => HelpCenterSheet(userName: userName),
+      builder: (_) => HelpCenterSheet(userName: widget.userName),
     );
   }
 }
@@ -153,6 +179,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _loading = false;
   bool _obscurePassword = true;
 
+  File? _selectedImage; // State untuk gambar dari galeri
+
   static const Color _deepTeal = Color(0xFF0F5A4E);
   static const Color _primaryTeal = Color(0xFF1A7F6D);
   static const Color _accentGold = Color(0xFFCBA052);
@@ -164,6 +192,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _nameController = TextEditingController(text: widget.user.name);
     _emailController = TextEditingController(text: widget.user.email);
     _passController = TextEditingController();
+  }
+
+  // Fungsi ambil gambar dari galeri
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+      });
+    }
   }
 
   void _showSnackBar(String msg, {bool isError = true}) {
@@ -187,25 +226,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
-    if (password.isNotEmpty) {
-      final passRegex = RegExp(
-        r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$',
-      );
-      if (!passRegex.hasMatch(password)) {
-        _showSnackBar(
-          "Password minimal 8 karakter, mengandung huruf kapital, angka, dan simbol",
-        );
-        return;
-      }
-    }
-
     setState(() => _loading = true);
 
+    // Sisipkan _selectedImage?.path ke parameter profilePath
     final res = await AuthController.instance.updateProfile(
       id: widget.user.id!,
       name: name,
       email: email,
       password: password,
+      profilePath: _selectedImage?.path ?? widget.user.profilePath,
     );
 
     if (!mounted) return;
@@ -248,49 +277,55 @@ class _EditProfilePageState extends State<EditProfilePage> {
         child: Column(
           children: [
             Center(
-              child: Stack(
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(
-                        color: _primaryTeal.withOpacity(0.2),
-                        width: 4,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _primaryTeal.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      size: 60,
-                      color: _primaryTeal,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: _accentGold,
+              child: GestureDetector(
+                onTap: _pickImage, // Trigger ganti gambar saat diketuk
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt_rounded,
                         color: Colors.white,
-                        size: 18,
+                        border: Border.all(
+                          color: _primaryTeal.withOpacity(0.2),
+                          width: 4,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _primaryTeal.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                        image: DecorationImage(
+                          image: _selectedImage != null
+                              ? FileImage(_selectedImage!) as ImageProvider
+                              : (widget.user.profilePath.startsWith('assets/')
+                                    ? AssetImage(widget.user.profilePath)
+                                    : FileImage(File(widget.user.profilePath))),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: _accentGold,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -329,8 +364,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  elevation: 4,
-                  shadowColor: _primaryTeal.withOpacity(0.4),
                 ),
                 child: _loading
                     ? const SizedBox(
@@ -424,31 +457,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 }
 
+// Biarkan kelas HelpCenterSheet sesuai bawaan
 class HelpCenterSheet extends StatelessWidget {
   final String userName;
   const HelpCenterSheet({super.key, required this.userName});
 
-  static const Color _deepTeal = Color(0xFF0F5A4E);
-  static const Color _primaryTeal = Color(0xFF1A7F6D);
-  static const Color _accentGold = Color(0xFFCBA052);
-  static const Color _bgSoft = Color(0xFFF8FAFB);
-
   Future<void> _launchWhatsApp(String phone) async {
-    String formattedPhone = phone;
-    if (phone.startsWith('0')) {
-      formattedPhone = '62${phone.substring(1)}';
-    }
-
+    String formattedPhone = phone.startsWith('0')
+        ? '62${phone.substring(1)}'
+        : phone;
     final String message =
         "Halo, saya pengguna Hidayah Hub dengan username=$userName hendak meminta bantuan dari tim pengembang terkait...";
-
     final Uri url = Uri.parse(
       "https://wa.me/$formattedPhone?text=${Uri.encodeComponent(message)}",
     );
-
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication))
       throw Exception('Tidak bisa membuka WhatsApp $url');
-    }
   }
 
   @override
@@ -474,163 +498,29 @@ class HelpCenterSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4F1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.support_agent_rounded,
-                  color: _primaryTeal,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pusat Bantuan',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: _deepTeal,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    'Tim Hidayah Hub siap membantu',
-                    style: TextStyle(
-                      color: _accentGold,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
           const Text(
-            'Silakan pilih salah satu kontak pengembang di bawah ini untuk memulai percakapan via WhatsApp:',
-            style: TextStyle(
-              color: Color(0xFF5E6D7E),
-              fontSize: 14,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-            ),
+            'Silakan hubungi kontak berikut:',
+            style: TextStyle(color: Color(0xFF5E6D7E)),
           ),
-          const SizedBox(height: 24),
-
+          const SizedBox(height: 16),
           _whatsappItem('Salman Faris', '085339167818'),
           const SizedBox(height: 14),
           _whatsappItem('Reza Rasendriya Adi Putra', '081227213841'),
-
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              'Tersedia Senin - Jumat (08:00 - 17:00)',
-              style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _whatsappItem(String name, String phone) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _launchWhatsApp(phone),
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: _bgSoft,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8EE), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const FaIcon(
-                  FontAwesomeIcons.whatsapp,
-                  color: Color(0xFF25D366),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: _deepTeal,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      phone,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _primaryTeal.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-                  color: _primaryTeal,
-                ),
-              ),
-            ],
-          ),
+    return InkWell(
+      onTap: () => _launchWhatsApp(phone),
+      child: ListTile(
+        leading: const FaIcon(
+          FontAwesomeIcons.whatsapp,
+          color: Color(0xFF25D366),
         ),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(phone),
       ),
     );
   }

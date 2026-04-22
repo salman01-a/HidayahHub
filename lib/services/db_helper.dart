@@ -19,10 +19,10 @@ class DBHelper {
   Future<Database> _initDB() async {
     final databasesPath = await getDatabasesPath();
     final path = p.join(databasesPath, 'hidayahhub.db');
-
+    // await deleteDatabase(path);
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
