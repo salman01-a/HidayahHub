@@ -8,6 +8,7 @@ import '../services/doa_service.dart';
 import '../services/home_prayer_pref_service.dart';
 import '../services/shalat_service.dart';
 import '../screen/home/home_feature.dart';
+import '../services/notification_service.dart';
 
 class DashboardHighlightItem {
   final String title;
@@ -38,6 +39,7 @@ class DashboardController extends ChangeNotifier {
     'WIT': 9,
     'London': 0,
   };
+  bool isNotifSholatActive = true;
 
   static const List<DashboardHighlightItem> highlightItems = [
     DashboardHighlightItem(
@@ -117,25 +119,36 @@ class DashboardController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleSemuaNotif(bool value) {
+    isNotifSholatActive = value;
+
+    if (isNotifSholatActive) {
+      // Kalau dinyalakan, pasang alarmnya
+      NotificationService.instance.schedulePrayerNotifications(
+        prayerTimes: prayerTimes,
+        nowLocal: nowLocal,
+      );
+    } else {
+      // Kalau dimatikan, hapus semua jadwal alarmnya
+      NotificationService.instance.cancelAllNotif();
+    }
+    notifyListeners();
+  }
+
   Future<void> refreshDashboard() async {
-    await Future.wait<void>([
-      _safeLoadDoa(),
-      _safeLoadHomePrayerConfig(),
-    ]);
+    await Future.wait<void>([_safeLoadDoa(), _safeLoadHomePrayerConfig()]);
   }
 
   Future<void> _safeLoadDoa() async {
     try {
       await loadDoa().timeout(const Duration(seconds: 15));
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _safeLoadHomePrayerConfig() async {
     try {
       await loadHomePrayerConfig().timeout(const Duration(seconds: 20));
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<List<DoaItem>> loadDoa() async {
@@ -187,6 +200,14 @@ class DashboardController extends ChangeNotifier {
         'Maghrib': parseTime(todayEntry.maghrib),
         'Isya': parseTime(todayEntry.isya),
       };
+
+      // Cek apakah saklar notif sedang nyala? Kalau iya, jadwalkan.
+      if (isNotifSholatActive) {
+        await NotificationService.instance.schedulePrayerNotifications(
+          prayerTimes: prayerTimes,
+          nowLocal: zoneNow,
+        );
+      }
     } catch (_) {
       // Keep previous values.
     } finally {

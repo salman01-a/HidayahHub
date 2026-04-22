@@ -72,5 +72,7 @@
 	<string>Aplikasi memerlukan kamera untuk tampilan penunjuk arah kiblat.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikasi memerlukan lokasi agar arah kiblat lebih akurat.</string>
+	<key>GoogleMapsApiKey</key>
+	<string>$(MAPS_API_KEY)</string>
 </dict>
 </plist>

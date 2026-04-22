@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hidayahhub/screen/home/notification_view.dart';
 
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
@@ -17,6 +18,8 @@ import 'home/chatbot_view.dart';
 import 'home/minigames_view.dart';
 import '../services/session_service.dart';
 
+import '../controllers/dashboard_controller.dart';
+
 class HomePage extends StatefulWidget {
   final String userName;
 
@@ -30,7 +33,7 @@ class _HomePageState extends State<HomePage> {
   late final HomeController _controller;
   final SessionService _sessionService = SessionService.instance;
   late String _currentUserName;
-
+  late final DashboardController _dashboardController = DashboardController();
   @override
   void initState() {
     super.initState();
@@ -123,9 +126,14 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;
       case HomeFeatureAction.notifSholat:
-        _showFeatureInfo(
-          'Notifikasi Pengingat Sholat',
-          'Butuh local notifications dan penjadwalan alarm.',
+        // _showFeatureInfo(
+        //   'Notifikasi Pengingat Sholat',
+        //   'Butuh local notifications dan penjadwalan alarm.',
+        // );
+
+        _openFeaturePage(
+          'Notifikasi Sholat',
+          PrayerNotificationView(controller: _dashboardController),
         );
 
         break;
@@ -321,7 +329,7 @@ class _HomePageState extends State<HomePage> {
         features: _controller.homeOnlyFeatures,
         onTapFeature: _onHomeFeatureTap,
         userName: _currentUserName,
-      ),  
+      ),
       ProfileView(userName: _currentUserName, onUpdate: _refreshProfileData),
       const SaranKesanView(),
     ];

@@ -16,20 +16,22 @@ class NearbyMosqueService {
     int radiusMeters = 3000,
     int limit = 20,
   }) async {
-    final apiKey = AppEnv.googleMapsApiKey; 
-    
+    final apiKey = AppEnv.googleMapsApiKey;
+
     final uri = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
       '?location=$latitude,$longitude'
       '&radius=$radiusMeters'
       '&type=mosque'
-      '&key=$apiKey'
+      '&key=$apiKey',
     );
 
     final response = await http.get(uri).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      throw Exception('Gagal menghubungi Google Maps API (${response.statusCode})');
+      throw Exception(
+        'Gagal menghubungi Google Maps API (${response.statusCode})',
+      );
     }
 
     final decoded = jsonDecode(response.body);
@@ -69,13 +71,13 @@ class NearbyMosqueService {
     required LatLng destination,
   }) async {
     final apiKey = AppEnv.googleMapsApiKey;
-    
+
     final uri = Uri.parse(
       'https://maps.googleapis.com/maps/api/directions/json'
       '?origin=${start.latitude},${start.longitude}'
       '&destination=${destination.latitude},${destination.longitude}'
-      '&mode=walking' 
-      '&key=$apiKey'
+      '&mode=walking'
+      '&key=$apiKey',
     );
 
     final response = await http.get(uri).timeout(const Duration(seconds: 15));
@@ -91,13 +93,14 @@ class NearbyMosqueService {
       throw Exception('Rute tidak ditemukan (Status: $status)');
     }
 
-    final route = (data['routes'] as List<dynamic>).first as Map<String, dynamic>;
+    final route =
+        (data['routes'] as List<dynamic>).first as Map<String, dynamic>;
     final leg = (route['legs'] as List<dynamic>).first as Map<String, dynamic>;
-    
+
     final distanceMeters = (leg['distance']['value'] as num?)?.toDouble() ?? 0;
     final durationSeconds = (leg['duration']['value'] as num?)?.toDouble() ?? 0;
     final encodedPolyline = route['overview_polyline']['points'] as String;
-    
+
     final routePoints = _decodePolyline(encodedPolyline);
 
     return NearbyRoute(

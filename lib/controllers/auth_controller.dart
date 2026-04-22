@@ -77,6 +77,7 @@ class AuthController {
     required String name,
     required String email,
     String? password,
+    String? profilePath,
   }) async {
     try {
       final taken = await _db.isNameTaken(name, id);

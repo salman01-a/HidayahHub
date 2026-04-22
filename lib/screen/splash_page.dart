@@ -130,7 +130,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
         transitionDuration: const Duration(milliseconds: 550),
         pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
           opacity: animation,
-          child: HomePage(userName: userName),
+          child: HomePage(userName: userName, ),
         ),
       ),
     );
@@ -265,7 +265,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
           color: Colors.white,
           padding: const EdgeInsets.all(15),
           child: Image.asset(
-            'assets/logo.png', // Ganti sesuai path asetmu
+            'assets/logo.png',
             fit: BoxFit.contain,
           ),
         ),

@@ -48,7 +48,7 @@ class DBHelper {
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        profilePath TEXT
+        profilePath TEXT DEFAULT 'assets/default.png'
       )
     ''');
   }
@@ -113,4 +113,17 @@ class DBHelper {
     );
     return res.isNotEmpty;
   }
+}
+
+Future<String> getProfileImagePath(int userId) async {
+  final db = await DBHelper.instance.database;
+  final res = await db.query(
+    'users',
+    columns: ['profilePath'],
+    where: 'id = ?',
+    whereArgs: [userId],
+    limit: 1,
+  );
+  if (res.isEmpty) return 'assets/default.png';
+  return res.first['profilePath'] as String? ?? 'assets/default.png';
 }
