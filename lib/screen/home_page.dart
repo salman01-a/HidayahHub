@@ -39,6 +39,20 @@ class _HomePageState extends State<HomePage> {
   late final DashboardController _dashboardController = DashboardController();
 
   String _profilePath = 'assets/profile/default.png';
+
+  ImageProvider _resolveProfileImage(String path) {
+    if (path.startsWith('assets/')) {
+      return AssetImage(path);
+    }
+
+    final file = File(path);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+
+    return const AssetImage('assets/profile/default.png');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +93,7 @@ class _HomePageState extends State<HomePage> {
         _currentUserName = name;
       });
     }
-    _loadProfileImage();
+    await _loadProfileImage();
   }
 
   void _onHomeFeatureTap(HomeFeature feature) {
@@ -380,9 +394,7 @@ class _HomePageState extends State<HomePage> {
                 color: const Color(0xFFE6F1F9),
                 borderRadius: BorderRadius.circular(11),
                 image: DecorationImage(
-                  image: _profilePath.startsWith('assets/')
-                      ? AssetImage(_profilePath) as ImageProvider
-                      : FileImage(File(_profilePath)),
+                  image: _resolveProfileImage(_profilePath),
                   fit: BoxFit.cover,
                 ),
               ),

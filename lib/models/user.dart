@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 class UserModel {
+  static const String defaultProfilePath = 'assets/profile/default.png';
+
   final int? id;
   final String name;
   final String email;
@@ -14,7 +16,7 @@ class UserModel {
     required this.name,
     required this.email,
     required this.passwordHash,
-    this.profilePath = 'assets/profile/default.png',
+    this.profilePath = defaultProfilePath,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,14 +31,15 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> m) {
-    String pPath = m['profilePath'] as String? ?? 'assets/profile/default.png';
-    if (pPath == 'assets/default.png') pPath = 'assets/profile/default.png';
+    String pPath = m['profilePath'] as String? ?? defaultProfilePath;
+    if (pPath == 'assets/default.png') pPath = defaultProfilePath;
 
     return UserModel(
       id: m['id'] as int?,
       name: m['name'] as String? ?? '',
       email: m['email'] as String? ?? '',
       passwordHash: m['password'] as String? ?? '',
+      profilePath: pPath,
     );
   }
 
@@ -58,7 +61,7 @@ class UserModel {
       name: name,
       email: email,
       passwordHash: hashPassword(password),
-      profilePath: 'assets/profile/default.png',
+      profilePath: defaultProfilePath,
     );
   }
 }

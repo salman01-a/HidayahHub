@@ -22,7 +22,7 @@ class DBHelper {
     // await deleteDatabase(path);
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -39,6 +39,14 @@ class DBHelper {
       await _createHomePrayerPreferenceTable(db);
       await _createSurahReadBookmarksTable(db);
     }
+    if (oldVersion < 4) {
+      await db.update(
+        'users',
+        {'profilePath': 'assets/profile/default.png'},
+        where: 'profilePath = ? OR profilePath IS NULL OR profilePath = ?',
+        whereArgs: ['assets/default.png', ''],
+      );
+    }
   }
 
   Future<void> _createUsersTable(Database db) async {
@@ -48,7 +56,7 @@ class DBHelper {
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        profilePath TEXT DEFAULT 'assets/default.png'
+        profilePath TEXT DEFAULT 'assets/profile/default.png'
       )
     ''');
   }
@@ -124,6 +132,10 @@ Future<String> getProfileImagePath(int userId) async {
     whereArgs: [userId],
     limit: 1,
   );
-  if (res.isEmpty) return 'assets/default.png';
-  return res.first['profilePath'] as String? ?? 'assets/default.png';
+  if (res.isEmpty) return 'assets/profile/default.png';
+  final rawPath = res.first['profilePath'] as String?;
+  if (rawPath == null || rawPath.isEmpty || rawPath == 'assets/default.png') {
+    return 'assets/profile/default.png';
+  }
+  return rawPath;
 }

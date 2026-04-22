@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Import Image Picker
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/user.dart';
 import '../../services/session_service.dart';
@@ -22,6 +24,19 @@ class ProfileView extends StatefulWidget {
 
 class _ProfileViewState extends State<ProfileView> {
   UserModel? _currentUser;
+
+  ImageProvider _resolveProfileImage(String path) {
+    if (path.startsWith('assets/')) {
+      return AssetImage(path);
+    }
+
+    final file = File(path);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+
+    return const AssetImage(UserModel.defaultProfilePath);
+  }
 
   @override
   void initState() {
@@ -62,10 +77,8 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildUserHeader() {
-    final path = _currentUser?.profilePath ?? 'assets/profile/default.png';
-    final imageProvider = path.startsWith('assets/')
-        ? AssetImage(path) as ImageProvider
-        : FileImage(File(path));
+    final path = _currentUser?.profilePath ?? UserModel.defaultProfilePath;
+    final imageProvider = _resolveProfileImage(path);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -181,6 +194,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   File? _selectedImage; // State untuk gambar dari galeri
 
+  ImageProvider _resolveProfileImage(String path) {
+    if (path.startsWith('assets/')) {
+      return AssetImage(path);
+    }
+
+    final file = File(path);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+
+    return const AssetImage(UserModel.defaultProfilePath);
+  }
+
   static const Color _deepTeal = Color(0xFF0F5A4E);
   static const Color _primaryTeal = Color(0xFF1A7F6D);
   static const Color _accentGold = Color(0xFFCBA052);
@@ -202,6 +228,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() {
         _selectedImage = File(image.path);
       });
+    }
+  }
+
+  Future<String?> _persistSelectedImage(File imageFile) async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final profileDir = Directory(p.join(docsDir.path, 'profile_images'));
+      if (!await profileDir.exists()) {
+        await profileDir.create(recursive: true);
+      }
+
+      final ext = p.extension(imageFile.path);
+      final safeExt = ext.isNotEmpty ? ext : '.jpg';
+      final fileName =
+          'user_${widget.user.id}_${DateTime.now().millisecondsSinceEpoch}$safeExt';
+      final targetPath = p.join(profileDir.path, fileName);
+
+      final copied = await imageFile.copy(targetPath);
+      return copied.path;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -228,13 +275,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     setState(() => _loading = true);
 
-    // Sisipkan _selectedImage?.path ke parameter profilePath
+    String profilePath = widget.user.profilePath;
+    if (_selectedImage != null) {
+      final persistedPath = await _persistSelectedImage(_selectedImage!);
+      if (persistedPath == null) {
+        if (!mounted) return;
+        setState(() => _loading = false);
+        _showSnackBar('Gagal menyimpan foto profil. Coba lagi.');
+        return;
+      }
+      profilePath = persistedPath;
+    }
+
     final res = await AuthController.instance.updateProfile(
       id: widget.user.id!,
       name: name,
       email: email,
       password: password,
-      profilePath: _selectedImage?.path ?? widget.user.profilePath,
+      profilePath: profilePath,
     );
 
     if (!mounted) return;
@@ -301,9 +359,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         image: DecorationImage(
                           image: _selectedImage != null
                               ? FileImage(_selectedImage!) as ImageProvider
-                              : (widget.user.profilePath.startsWith('assets/')
-                                    ? AssetImage(widget.user.profilePath)
-                                    : FileImage(File(widget.user.profilePath))),
+                              : _resolveProfileImage(widget.user.profilePath),
                           fit: BoxFit.cover,
                         ),
                       ),
