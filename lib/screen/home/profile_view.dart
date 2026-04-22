@@ -7,7 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 class ProfileView extends StatelessWidget {
   final String userName;
-  const ProfileView({super.key, required this.userName});
+  final VoidCallback onUpdate;
+  const ProfileView({
+    super.key,
+    required this.userName,
+    required this.onUpdate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +52,7 @@ class ProfileView extends StatelessWidget {
         children: [
           const CircleAvatar(
             radius: 30,
-            backgroundColor: Colors.black, // Background hitam sesuai permintaan
+            backgroundColor: Colors.black,
             child: Icon(Icons.person, color: Colors.white, size: 30),
           ),
           const SizedBox(width: 16),
@@ -79,10 +84,11 @@ class ProfileView extends StatelessWidget {
     if (email == null) return;
     final user = await AuthController.instance.getUserByEmail(email);
     if (user != null && context.mounted) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => EditProfilePage(user: user)),
       );
+      onUpdate();
     }
   }
 
@@ -143,138 +149,277 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
-  final _passController = TextEditingController();
+  late TextEditingController _passController;
   bool _loading = false;
+  bool _obscurePassword = true;
+
+  static const Color _deepTeal = Color(0xFF0F5A4E);
+  static const Color _primaryTeal = Color(0xFF1A7F6D);
+  static const Color _accentGold = Color(0xFFCBA052);
+  static const Color _bgSoft = Color(0xFFF8FAFB);
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user.name);
     _emailController = TextEditingController(text: widget.user.email);
+    _passController = TextEditingController();
+  }
+
+  void _showSnackBar(String msg, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.redAccent : _primaryTeal,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   void _save() async {
-    if (_nameController.text.isEmpty || _emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Nama dan Email tidak boleh kosong")),
-      );
+    String name = _nameController.text.trim();
+    String email = _emailController.text.trim();
+    String password = _passController.text.trim();
+
+    if (name.isEmpty || email.isEmpty) {
+      _showSnackBar("Nama dan Email tidak boleh kosong");
       return;
     }
 
+    if (password.isNotEmpty) {
+      final passRegex = RegExp(
+        r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$',
+      );
+      if (!passRegex.hasMatch(password)) {
+        _showSnackBar(
+          "Password minimal 8 karakter, mengandung huruf kapital, angka, dan simbol",
+        );
+        return;
+      }
+    }
+
     setState(() => _loading = true);
+
     final res = await AuthController.instance.updateProfile(
       id: widget.user.id!,
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passController.text.trim(),
+      name: name,
+      email: email,
+      password: password,
     );
+
+    if (!mounted) return;
     setState(() => _loading = false);
 
     if (res['success']) {
-      await SessionService.instance.saveLoginSession(
-        userName: _nameController.text.trim(),
-      );
+      await SessionService.instance.saveLoginSession(userName: name);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(res['message'])));
+        _showSnackBar(res['message'], isError: false);
         Navigator.pop(context);
       }
     } else {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res['message']), backgroundColor: Colors.red),
-        );
+      _showSnackBar(res['message']);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan Akun'), centerTitle: true),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Center(
-            child: Stack(
-              children: [
-                const CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.black,
-                  child: Icon(Icons.person, size: 50, color: Colors.white),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: CircleAvatar(
-                    backgroundColor: const Color(0xFF1A7F6D),
-                    radius: 18,
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 18,
+      backgroundColor: _bgSoft,
+      appBar: AppBar(
+        title: const Text(
+          'Edit Profil',
+          style: TextStyle(fontWeight: FontWeight.w900, color: _deepTeal),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: _deepTeal,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Center(
+              child: Stack(
+                children: [
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color: Colors.white,
+                      border: Border.all(
+                        color: _primaryTeal.withOpacity(0.2),
+                        width: 4,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primaryTeal.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      size: 60,
+                      color: _primaryTeal,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 30),
-          _field('Username', _nameController),
-          const SizedBox(height: 16),
-          _field('Email', _emailController),
-          const SizedBox(height: 16),
-          _field(
-            'Password Baru (Kosongkan jika tidak diubah)',
-            _passController,
-            isPass: true,
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            height: 54,
-            child: ElevatedButton(
-              onPressed: _loading ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F5A4E),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: _loading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Simpan Perubahan',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: _accentGold,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 32),
+
+            _customField(
+              controller: _nameController,
+              label: "Username",
+              icon: Icons.person_outline_rounded,
+            ),
+            const SizedBox(height: 18),
+            _customField(
+              controller: _emailController,
+              label: "Email",
+              icon: Icons.email_outlined,
+              readOnly: true,
+            ),
+            const SizedBox(height: 18),
+            _customField(
+              controller: _passController,
+              label: "Password Baru",
+              icon: Icons.lock_outline_rounded,
+              isPassword: true,
+              hint: "Kosongkan jika tidak ingin diubah",
+            ),
+
+            const SizedBox(height: 40),
+
+            SizedBox(
+              width: double.infinity,
+              height: 58,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryTeal,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  elevation: 4,
+                  shadowColor: _primaryTeal.withOpacity(0.4),
+                ),
+                child: _loading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "SIMPAN PERUBAHAN",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _field(
-    String label,
-    TextEditingController controller, {
-    bool isPass = false,
+  Widget _customField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    bool readOnly = false,
+    String? hint,
   }) {
-    return TextField(
-      controller: controller,
-      obscureText: isPass,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE2E8EE)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: _deepTeal,
+              fontSize: 14,
+            ),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE2E8EE)),
+        TextFormField(
+          controller: controller,
+          readOnly: readOnly,
+          obscureText: isPassword ? _obscurePassword : false,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: readOnly ? Colors.grey : _deepTeal,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 13,
+              fontWeight: FontWeight.normal,
+            ),
+            prefixIcon: Icon(icon, color: _primaryTeal, size: 22),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: _accentGold,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  )
+                : null,
+            filled: true,
+            fillColor: readOnly ? Colors.grey.shade100 : Colors.white,
+            contentPadding: const EdgeInsets.all(20),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: _primaryTeal, width: 2),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -283,15 +428,19 @@ class HelpCenterSheet extends StatelessWidget {
   final String userName;
   const HelpCenterSheet({super.key, required this.userName});
 
+  static const Color _deepTeal = Color(0xFF0F5A4E);
+  static const Color _primaryTeal = Color(0xFF1A7F6D);
+  static const Color _accentGold = Color(0xFFCBA052);
+  static const Color _bgSoft = Color(0xFFF8FAFB);
+
   Future<void> _launchWhatsApp(String phone) async {
     String formattedPhone = phone;
     if (phone.startsWith('0')) {
       formattedPhone = '62${phone.substring(1)}';
     }
 
-    // Template pesan sesuai permintaan Anda
     final String message =
-        "halo saya pengguna Hidayah Hub dengan username=$userName hendak meminta bantuan dari tim pengembang terkait...";
+        "Halo, saya pengguna Hidayah Hub dengan username=$userName hendak meminta bantuan dari tim pengembang terkait...";
 
     final Uri url = Uri.parse(
       "https://wa.me/$formattedPhone?text=${Uri.encodeComponent(message)}",
@@ -305,95 +454,182 @@ class HelpCenterSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 48),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 40,
-              height: 4,
+              width: 48,
+              height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Pusat Bantuan',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF0F5A4E),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Klik salah satu kontak di bawah ini untuk terhubung langsung dengan tim kami:',
-            style: TextStyle(color: Colors.grey, height: 1.4),
+          const SizedBox(height: 28),
+
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F4F1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.support_agent_rounded,
+                  color: _primaryTeal,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pusat Bantuan',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: _deepTeal,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Text(
+                    'Tim Hidayah Hub siap membantu',
+                    style: TextStyle(
+                      color: _accentGold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 20),
+
+          const Text(
+            'Silakan pilih salah satu kontak pengembang di bawah ini untuk memulai percakapan via WhatsApp:',
+            style: TextStyle(
+              color: Color(0xFF5E6D7E),
+              fontSize: 14,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 24),
+
           _whatsappItem('Salman Faris', '085339167818'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _whatsappItem('Reza Rasendriya Adi Putra', '081227213841'),
+
+          const SizedBox(height: 20),
+          Center(
+            child: Text(
+              'Tersedia Senin - Jumat (08:00 - 17:00)',
+              style: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _whatsappItem(String name, String phone) {
-    return InkWell(
-      // Tambahkan InkWell agar item bisa diklik
-      onTap: () => _launchWhatsApp(phone),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFB),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8EE)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFFFFB),
-                borderRadius: BorderRadius.circular(10),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _launchWhatsApp(phone),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _bgSoft,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8EE), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              child: const FaIcon(
-                FontAwesomeIcons.whatsapp,
-                color: Colors.green,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
                     ),
-                  ),
-                  Text(
-                    phone,
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                ],
+                  ],
+                ),
+                child: const FaIcon(
+                  FontAwesomeIcons.whatsapp,
+                  color: Color(0xFF25D366),
+                  size: 24,
+                ),
               ),
-            ),
-            const Icon(
-              Icons.send_rounded,
-              size: 18,
-              color: Color(0xFF0F5A4E),
-            ), // Ganti icon jadi kirim
-          ],
+              const SizedBox(width: 16),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: _deepTeal,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      phone,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _primaryTeal.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: _primaryTeal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

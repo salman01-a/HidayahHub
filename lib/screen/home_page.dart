@@ -29,12 +29,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final HomeController _controller;
   final SessionService _sessionService = SessionService.instance;
+  late String _currentUserName;
 
   @override
   void initState() {
     super.initState();
     _controller = HomeController();
     _controller.addListener(_onControllerChanged);
+    _currentUserName = widget.userName;
   }
 
   @override
@@ -118,10 +120,6 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Shake Surah', const ShakeSurahView());
         break;
       case HomeFeatureAction.miniGames:
-        // _showFeatureInfo(
-        //   'Minigames Sambung Ayat',
-        //   'Siapkan bank soal ayat dan mode skor.',
-        // );
         _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;
       case HomeFeatureAction.notifSholat:
@@ -304,6 +302,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _refreshProfileData() async {
+    final name = await _sessionService.getSessionUserName();
+    if (name != null && mounted) {
+      setState(() {
+        _currentUserName = name;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFFF3F6FA);
@@ -313,9 +320,9 @@ class _HomePageState extends State<HomePage> {
         key: ValueKey('dashboard-${_controller.dashboardRefreshSignal}'),
         features: _controller.homeOnlyFeatures,
         onTapFeature: _onHomeFeatureTap,
-        userName: widget.userName,
-      ),
-      ProfileView(userName: widget.userName),
+        userName: _currentUserName,
+      ),  
+      ProfileView(userName: _currentUserName, onUpdate: _refreshProfileData),
       const SaranKesanView(),
     ];
 
@@ -347,7 +354,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hello ${widget.userName}',
+                    'Hello $_currentUserName',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

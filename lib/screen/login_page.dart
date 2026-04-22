@@ -22,6 +22,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true; // Untuk toggle mata di password
   bool _checkingBiometric = true;
   bool _isBiometricReady = false;
+  IconData _biometricIcon = Icons.fingerprint_rounded;
+  String _biometricLabel = 'Biometrik';
   String? _lastEmail;
 
   @override
@@ -42,11 +44,19 @@ class _LoginPageState extends State<LoginPage> {
     bool ready = false;
     String? validatedEmail;
 
+    // Default ikon dan label sebelum deteksi
+    IconData icon = Icons.fingerprint_rounded;
+    String label = 'Biometrik';
+
     if (savedEmail != null && savedEmail.trim().isNotEmpty) {
       final user = await AuthController.instance.getUserByEmail(savedEmail);
       if (user != null) {
         ready = true;
         validatedEmail = savedEmail;
+
+        final details = await _biometricService.getBiometricDetails();
+        icon = details['icon'];
+        label = details['label'];
       } else {
         await _sessionService.clearLastEmail();
       }
@@ -57,6 +67,8 @@ class _LoginPageState extends State<LoginPage> {
       _lastEmail = validatedEmail;
       _isBiometricReady = ready;
       _checkingBiometric = false;
+      _biometricIcon = icon;
+      _biometricLabel = label;
     });
   }
 
@@ -86,7 +98,7 @@ class _LoginPageState extends State<LoginPage> {
         isError: false,
       );
       final user = res['user'];
-      final userName = user?.name as String? ?? 'User'; 
+      final userName = user?.name as String? ?? 'User';
       final userEmail = user?.email as String? ?? '';
 
       await _sessionService.saveLastEmail(userEmail);
@@ -357,33 +369,60 @@ class _LoginPageState extends State<LoginPage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           )
-                        else if (_isBiometricReady)
-                          SizedBox(
-                            width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : _handleBiometricLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryTeal,
-                                foregroundColor: Colors.white,
-                                elevation: 4,
-                                shadowColor: primaryTeal.withOpacity(0.3),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Text(
-                                'Masuk Melalui Biometrik',
+                        else if (_isBiometricReady) ...[
+                          const SizedBox(height: 16),
+                          // Menggunakan pendekatan Quick-Login yang lebih modern
+                          Column(
+                            children: [
+                              const Text(
+                                "Atau masuk lebih cepat",
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 2.5,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              InkWell(
+                                onTap: _isLoading
+                                    ? null
+                                    : _handleBiometricLogin,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: primaryTeal.withOpacity(0.2),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: primaryTeal.withOpacity(0.1),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    _biometricIcon,
+                                    size: 44,
+                                    color: primaryTeal,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _biometricLabel,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: primaryTeal,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
+                        ],
                         // Divider
                         Container(
                           height: 1,

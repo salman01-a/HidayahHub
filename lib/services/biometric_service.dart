@@ -1,4 +1,5 @@
 import 'package:local_auth/local_auth.dart';
+import 'package:flutter/material.dart';
 
 class BiometricService {
   final LocalAuthentication _auth = LocalAuthentication();
@@ -24,6 +25,33 @@ class BiometricService {
       // Jika error karena belum daftar fingerprint/faceid di HP
       print("Error Biometric: $e");
       return false;
+    }
+  }
+  Future<Map<String, dynamic>> getBiometricDetails() async {
+    try {
+      List<BiometricType> availableBiometrics = await _auth.getAvailableBiometrics();
+      
+      if (availableBiometrics.contains(BiometricType.face)) {
+        return {
+          'icon': Icons.face_rounded,
+          'label': 'Face ID',
+        };
+      } else if (availableBiometrics.contains(BiometricType.fingerprint)) {
+        return {
+          'icon': Icons.fingerprint_rounded,
+          'label': 'Touch ID',
+        };
+      }
+      
+      return {
+        'icon': Icons.fingerprint_rounded,
+        'label': 'Biometrik',
+      };
+    } catch (e) {
+      return {
+        'icon': Icons.fingerprint_rounded,
+        'label': 'Biometrik',
+      };
     }
   }
 }
