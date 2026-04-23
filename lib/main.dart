@@ -6,15 +6,20 @@ import 'screen/splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.initialize();
-  // Load file .env
-  await dotenv.load(fileName: '.env', isOptional: true);
+
+  try {
+    await dotenv.load(fileName: '.env', isOptional: true);
+  } catch (e) {
+    debugPrint('Gagal memuat .env: $e');
+  }
+
+  try {
+    await NotificationService.instance.initialize();
+  } catch (e) {
+    debugPrint('Inisialisasi notifikasi gagal: $e');
+  }
 
   runApp(
     const MaterialApp(debugShowCheckedModeBanner: false, home: SplashPage()),
-    // const MaterialApp(
-    //   debugShowCheckedModeBanner: false,
-    //   home: HomePage(userName: "ini coba coba"),
-    // ),
   );
 }
