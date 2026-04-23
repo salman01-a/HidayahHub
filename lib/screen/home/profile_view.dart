@@ -231,26 +231,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<String?> _persistSelectedImage(File imageFile) async {
-    try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final profileDir = Directory(p.join(docsDir.path, 'profile_images'));
-      if (!await profileDir.exists()) {
-        await profileDir.create(recursive: true);
-      }
-
-      final ext = p.extension(imageFile.path);
-      final safeExt = ext.isNotEmpty ? ext : '.jpg';
-      final fileName =
-          'user_${widget.user.id}_${DateTime.now().millisecondsSinceEpoch}$safeExt';
-      final targetPath = p.join(profileDir.path, fileName);
-
-      final copied = await imageFile.copy(targetPath);
-      return copied.path;
-    } catch (_) {
-      return null;
+ Future<String?> _persistSelectedImage(File imageFile) async {
+  try {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final profileDir = Directory('${docsDir.path}/profile_images');
+    if (!await profileDir.exists()) {
+      await profileDir.create(recursive: true);
     }
+
+    final String fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final String targetPath = '${profileDir.path}/$fileName';
+
+    final bytes = await imageFile.readAsBytes();
+    final newFile = File(targetPath);
+    await newFile.writeAsBytes(bytes);
+
+    return newFile.path;
+  } catch (e) {
+    debugPrint("Gagal menyimpan foto profil: $e");
+    return null;
   }
+}
 
   void _showSnackBar(String msg, {bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
