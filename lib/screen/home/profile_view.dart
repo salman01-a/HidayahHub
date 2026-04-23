@@ -273,6 +273,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
+    if (password.isNotEmpty) {
+      final passwordRegex = RegExp(
+        r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$',
+      );
+      if (!passwordRegex.hasMatch(password)) {
+        _showSnackBar(
+          'Password baru harus minimal 8 karakter, mengandung huruf kapital, angka, dan simbol',
+        );
+        return;
+      }
+    }
+
     setState(() => _loading = true);
 
     String profilePath = widget.user.profilePath;

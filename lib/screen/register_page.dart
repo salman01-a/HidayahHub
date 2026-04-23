@@ -44,13 +44,27 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    final passwordRegex = RegExp(
+      r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$',
+    );
+    if (!passwordRegex.hasMatch(password)) {
+      _showSnackBar(
+        'Password harus minimal 8 karakter, mengandung huruf kapital, angka, dan simbol',
+      );
+      return;
+    }
+
     if (password != confirmPassword) {
       _showSnackBar('Password dan Konfirmasi tidak cocok');
       return;
     }
 
     setState(() => _isLoading = true);
-    final res = await AuthController.instance.register(name: name, email: email, password: password);
+    final res = await AuthController.instance.register(
+      name: name,
+      email: email,
+      password: password,
+    );
     if (!mounted) return;
     if (res['success'] == true) {
       _showSnackBar(res['message'] ?? 'Pendaftaran Berhasil!', isError: false);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/minigames.dart';
 import '../services/minigames_service.dart';
+import '../services/notification_service.dart';
 
 class MinigameController extends ChangeNotifier {
   final MinigameService _service = MinigameService();
@@ -140,6 +141,10 @@ class MinigameController extends ChangeNotifier {
   }
 
   Future<void> _saveScoreToHistory() async {
+    final previousBest = _history
+        .where((item) => item.difficulty == _selectedDifficulty)
+        .fold<int>(-1, (best, item) => item.score > best ? item.score : best);
+
     final historyItem = MinigameScoreHistory(
       difficulty: _selectedDifficulty,
       score: _score,
@@ -150,6 +155,14 @@ class MinigameController extends ChangeNotifier {
 
     await _service.saveScoreHistory(historyItem);
     _history = await _service.loadScoreHistory();
+
+    if (_score > previousBest) {
+      await NotificationService.instance.showMinigameHighScoreNotification(
+        difficulty: _selectedDifficulty,
+        score: _score,
+        maxScore: maxScore,
+      );
+    }
   }
 
   void restartGame() {

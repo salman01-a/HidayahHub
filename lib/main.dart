@@ -6,7 +6,7 @@ import 'screen/splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  NotificationService.instance.initialize();
+  await NotificationService.instance.initialize();
   // Load file .env
   await dotenv.load(fileName: '.env', isOptional: true);
 
