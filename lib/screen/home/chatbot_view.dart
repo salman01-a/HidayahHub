@@ -76,9 +76,11 @@ class _ChatbotViewState extends State<ChatbotView> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-              itemCount: _controller.messages.length + (_controller.isLoading ? 1 : 0),
+              itemCount:
+                  _controller.messages.length + (_controller.isLoading ? 1 : 0),
               itemBuilder: (context, index) {
-                if (_controller.isLoading && index == _controller.messages.length) {
+                if (_controller.isLoading &&
+                    index == _controller.messages.length) {
                   return _buildTypingBubble();
                 }
                 final message = _controller.messages[index];
@@ -101,17 +103,17 @@ class _ChatbotViewState extends State<ChatbotView> {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Row(
-          mainAxisAlignment:
-              isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: isUser
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            if (!isUser) ...[
-              const _SenderAvatar(isUser: false),
-              const SizedBox(width: 8),
-            ],
             Flexible(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.72,
                 ),
@@ -134,10 +136,6 @@ class _ChatbotViewState extends State<ChatbotView> {
                 ),
               ),
             ),
-            if (isUser) ...[
-              const SizedBox(width: 8),
-              const _SenderAvatar(isUser: true),
-            ],
           ],
         ),
       ),
@@ -149,11 +147,7 @@ class _ChatbotViewState extends State<ChatbotView> {
       padding: EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          _SenderAvatar(isUser: false),
-          SizedBox(width: 8),
-          _TypingIndicatorBubble(),
-        ],
+        children: [_TypingIndicatorBubble()],
       ),
     );
   }
@@ -175,7 +169,11 @@ class _ChatbotViewState extends State<ChatbotView> {
               color: Color(0xFFEAF4F2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.smart_toy_rounded, color: _deepTeal, size: 18),
+            child: const Icon(
+              Icons.smart_toy_rounded,
+              color: _deepTeal,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -219,30 +217,6 @@ class _ChatbotViewState extends State<ChatbotView> {
     );
   }
 }
-
-class _SenderAvatar extends StatelessWidget {
-  final bool isUser;
-
-  const _SenderAvatar({required this.isUser});
-
-  @override
-  Widget build(BuildContext context) {
-    final bgColor = isUser ? const Color(0xFFE8F7F4) : const Color(0xFFEDEFF4);
-    final iconColor = isUser ? const Color(0xFF0F8B77) : const Color(0xFF1E293B);
-
-    return Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-      child: Icon(
-        isUser ? Icons.person_rounded : Icons.smart_toy_rounded,
-        size: 17,
-        color: iconColor,
-      ),
-    );
-  }
-}
-
 class _TypingIndicatorBubble extends StatefulWidget {
   const _TypingIndicatorBubble();
 
@@ -298,7 +272,9 @@ class _TypingIndicatorBubbleState extends State<_TypingIndicatorBubble>
                 height: 6,
                 margin: EdgeInsets.only(right: index == 2 ? 0 : 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: opacity.clamp(0.2, 1.0)),
+                  color: Colors.white.withValues(
+                    alpha: opacity.clamp(0.2, 1.0),
+                  ),
                   shape: BoxShape.circle,
                 ),
               );

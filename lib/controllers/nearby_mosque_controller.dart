@@ -87,7 +87,9 @@ class NearbyMosqueController extends ChangeNotifier {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       if (_disposed) return;
 
@@ -161,12 +163,10 @@ class NearbyMosqueController extends ChangeNotifier {
       distanceFilter: 10,
     );
 
-    _positionSub = Geolocator.getPositionStream(locationSettings: settings).listen(
-      (position) async {
-        await _handlePositionUpdate(position);
-      },
-      onError: (_) {},
-    );
+    _positionSub = Geolocator.getPositionStream(locationSettings: settings)
+        .listen((position) async {
+          await _handlePositionUpdate(position);
+        }, onError: (_) {});
   }
 
   Future<void> _handlePositionUpdate(Position position) async {
@@ -182,7 +182,10 @@ class NearbyMosqueController extends ChangeNotifier {
     if (destination == null) return;
 
     final current = LatLng(position.latitude, position.longitude);
-    final destinationPoint = LatLng(destination.latitude, destination.longitude);
+    final destinationPoint = LatLng(
+      destination.latitude,
+      destination.longitude,
+    );
 
     final remainingMeters = Geolocator.distanceBetween(
       current.latitude,

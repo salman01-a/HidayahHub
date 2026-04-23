@@ -16,6 +16,10 @@ class AuthController {
     required String password,
   }) async {
     try {
+      final nameTaken = await _db.isNameTaken(name, -1);
+      if (nameTaken)
+        return {'success': false, 'message': 'Username sudah digunakan'};
+
       final existing = await _db.getUserByEmail(email);
       if (existing != null)
         return {'success': false, 'message': 'Email sudah terdaftar'};
@@ -73,6 +77,7 @@ class AuthController {
     required String name,
     required String email,
     String? password,
+    String? profilePath,
   }) async {
     try {
       final taken = await _db.isNameTaken(name, id);
@@ -81,6 +86,10 @@ class AuthController {
 
       final currentUser = await _db.getUserByEmail(email);
       String finalHash = currentUser?.passwordHash ?? '';
+      String finalProfilePath =
+          profilePath ??
+          currentUser?.profilePath ??
+          'assets/profile/default.png';
 
       if (password != null && password.isNotEmpty) {
         finalHash = UserModel.hashPassword(password);
@@ -91,6 +100,7 @@ class AuthController {
         name: name,
         email: email,
         passwordHash: finalHash,
+        profilePath: finalProfilePath,
       );
 
       await _db.updateUser(updatedUser);

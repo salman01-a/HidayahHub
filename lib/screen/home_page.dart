@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hidayahhub/screen/home/notification_view.dart';
+import 'package:hidayahhub/screen/home/zakat_view.dart';
 
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
@@ -16,6 +18,10 @@ import 'login_page.dart';
 import 'home/chatbot_view.dart';
 import 'home/minigames_view.dart';
 import '../services/session_service.dart';
+import 'dart:io';
+
+import '../controllers/auth_controller.dart';
+import '../controllers/dashboard_controller.dart';
 
 class HomePage extends StatefulWidget {
   final String userName;
@@ -29,12 +35,31 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final HomeController _controller;
   final SessionService _sessionService = SessionService.instance;
+  late String _currentUserName;
+  late final DashboardController _dashboardController = DashboardController();
+
+  String _profilePath = 'assets/profile/default.png';
+
+  ImageProvider _resolveProfileImage(String path) {
+    if (path.startsWith('assets/')) {
+      return AssetImage(path);
+    }
+
+    final file = File(path);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+
+    return const AssetImage('assets/profile/default.png');
+  }
 
   @override
   void initState() {
     super.initState();
     _controller = HomeController();
     _controller.addListener(_onControllerChanged);
+    _currentUserName = widget.userName;
+    _loadProfileImage();
   }
 
   @override
@@ -47,6 +72,28 @@ class _HomePageState extends State<HomePage> {
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _loadProfileImage() async {
+    final email = await _sessionService.getLastEmail();
+    if (email != null) {
+      final user = await AuthController.instance.getUserByEmail(email);
+      if (user != null && mounted) {
+        setState(() {
+          _profilePath = user.profilePath;
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshProfileData() async {
+    final name = await _sessionService.getSessionUserName();
+    if (name != null && mounted) {
+      setState(() {
+        _currentUserName = name;
+      });
+    }
+    await _loadProfileImage();
   }
 
   void _onHomeFeatureTap(HomeFeature feature) {
@@ -95,10 +142,12 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Chatbot', const ChatbotView());
         break;
       case HomeFeatureAction.zakatDonasi:
-        _showFeatureInfo(
-          'Zakat & Donasi',
-          'Tambahkan kalkulator zakat dan integrasi payment gateway.',
-        );
+        // _showFeatureInfo(
+        //   'Zakat & Donasi',
+        //   'Tambahkan kalkulator zakat dan integrasi payment gateway.',
+        // );
+        _openFeaturePage("Kalkulator Zakat", const ZakatView());
+
         break;
       case HomeFeatureAction.jadwalDunia:
         _showFeatureInfo(
@@ -118,19 +167,20 @@ class _HomePageState extends State<HomePage> {
         _openFeaturePage('Shake Surah', const ShakeSurahView());
         break;
       case HomeFeatureAction.miniGames:
-        // _showFeatureInfo(
-        //   'Minigames Sambung Ayat',
-        //   'Siapkan bank soal ayat dan mode skor.',
-        // );
         _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;
-      case HomeFeatureAction.notifSholat:
-        _showFeatureInfo(
-          'Notifikasi Pengingat Sholat',
-          'Butuh local notifications dan penjadwalan alarm.',
-        );
+      // case HomeFeatureAction.notifSholat:
+      //   // _showFeatureInfo(
+      //   //   'Notifikasi Pengingat Sholat',
+      //   //   'Butuh local notifications dan penjadwalan alarm.',
+      //   // );
 
-        break;
+      //   _openFeaturePage(
+      //     'Notifikasi Sholat',
+      //     PrayerNotificationView(controller: _dashboardController),
+      //   );
+
+      //   break;
     }
   }
 
@@ -304,6 +354,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Future<void> _refreshProfileData() async {
+  //   final name = await _sessionService.getSessionUserName();
+  //   if (name != null && mounted) {
+  //     setState(() {
+  //       _currentUserName = name;
+  //     });
+  //   }
+  // }
+
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFFF3F6FA);
@@ -313,9 +372,9 @@ class _HomePageState extends State<HomePage> {
         key: ValueKey('dashboard-${_controller.dashboardRefreshSignal}'),
         features: _controller.homeOnlyFeatures,
         onTapFeature: _onHomeFeatureTap,
-        userName: widget.userName,
+        userName: _currentUserName,
       ),
-      ProfileView(userName: widget.userName),
+      ProfileView(userName: _currentUserName, onUpdate: _refreshProfileData),
       const SaranKesanView(),
     ];
 
@@ -334,11 +393,10 @@ class _HomePageState extends State<HomePage> {
               decoration: BoxDecoration(
                 color: const Color(0xFFE6F1F9),
                 borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Color(0xFF1F5577),
-                size: 20,
+                image: DecorationImage(
+                  image: _resolveProfileImage(_profilePath),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             const SizedBox(width: 9),
@@ -347,7 +405,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hello ${widget.userName}',
+                    'Hello $_currentUserName',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -372,10 +430,11 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-            onPressed: () => _showFeatureInfo(
+            onPressed: () => _openFeaturePage(
               'Notifikasi',
-              'Panel notifikasi akan dihubungkan ke pengingat sholat.',
+              PrayerNotificationView(controller: _dashboardController),
             ),
+
             icon: const Icon(
               Icons.notifications_none_rounded,
               color: Color(0xFF1B4D6A),

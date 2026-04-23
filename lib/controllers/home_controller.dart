@@ -47,7 +47,7 @@ class HomeController extends ChangeNotifier {
       availableNow: false,
     ),
     HomeFeature(
-      title: 'Zakat & Donasi',
+      title: 'Kalkulator Zakat',
       icon: Icons.volunteer_activism_outlined,
       color: Color(0xFFF08B4A),
       action: HomeFeatureAction.zakatDonasi,
@@ -81,13 +81,13 @@ class HomeController extends ChangeNotifier {
       action: HomeFeatureAction.miniGames,
       availableNow: false,
     ),
-    HomeFeature(
-      title: 'Notif Sholat',
-      icon: Icons.notifications_active_outlined,
-      color: Color(0xFF4BA890),
-      action: HomeFeatureAction.notifSholat,
-      availableNow: false,
-    ),
+    // HomeFeature(
+    //   title: 'Notif Sholat',
+    //   icon: Icons.notifications_active_outlined,
+    //   color: Color(0xFF4BA890),
+    //   action: HomeFeatureAction.notifSholat,
+    //   availableNow: false,
+    // ),
   ];
 
   void refreshDashboardSignal() {

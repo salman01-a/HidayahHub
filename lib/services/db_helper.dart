@@ -19,10 +19,10 @@ class DBHelper {
   Future<Database> _initDB() async {
     final databasesPath = await getDatabasesPath();
     final path = p.join(databasesPath, 'hidayahhub.db');
-
+    // await deleteDatabase(path);
     return await openDatabase(
       path,
-      version: 2,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -39,6 +39,14 @@ class DBHelper {
       await _createHomePrayerPreferenceTable(db);
       await _createSurahReadBookmarksTable(db);
     }
+    if (oldVersion < 4) {
+      await db.update(
+        'users',
+        {'profilePath': 'assets/profile/default.png'},
+        where: 'profilePath = ? OR profilePath IS NULL OR profilePath = ?',
+        whereArgs: ['assets/default.png', ''],
+      );
+    }
   }
 
   Future<void> _createUsersTable(Database db) async {
@@ -47,7 +55,8 @@ class DBHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        profilePath TEXT DEFAULT 'assets/profile/default.png'
       )
     ''');
   }
@@ -112,4 +121,21 @@ class DBHelper {
     );
     return res.isNotEmpty;
   }
+}
+
+Future<String> getProfileImagePath(int userId) async {
+  final db = await DBHelper.instance.database;
+  final res = await db.query(
+    'users',
+    columns: ['profilePath'],
+    where: 'id = ?',
+    whereArgs: [userId],
+    limit: 1,
+  );
+  if (res.isEmpty) return 'assets/profile/default.png';
+  final rawPath = res.first['profilePath'] as String?;
+  if (rawPath == null || rawPath.isEmpty || rawPath == 'assets/default.png') {
+    return 'assets/profile/default.png';
+  }
+  return rawPath;
 }

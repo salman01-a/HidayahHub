@@ -19,43 +19,41 @@ class NearbyMosque {
 
   static const String unknownAddress = 'Alamat belum tersedia';
 
-  factory NearbyMosque.fromOverpassElement(
-    Map<String, dynamic> element, {
+  factory NearbyMosque.fromGooglePlaces(
+    Map<String, dynamic> data, {
     required double userLatitude,
     required double userLongitude,
   }) {
-    final tags = element['tags'];
-    final type = element['type'] as String? ?? 'node';
-    final osmId = (element['id'] as num?)?.toString() ?? '';
-
-    final lat = (element['lat'] as num?)?.toDouble() ??
-        (element['center']?['lat'] as num?)?.toDouble();
-    final lon = (element['lon'] as num?)?.toDouble() ??
-        (element['center']?['lon'] as num?)?.toDouble();
+    final lat = data['geometry']?['location']?['lat'] as double?;
+    final lon = data['geometry']?['location']?['lng'] as double?;
 
     if (lat == null || lon == null) {
-      throw const FormatException('Lokasi masjid tidak valid');
+      throw const FormatException('Lokasi masjid tidak valid dari Google Maps');
     }
 
-    final tagMap = tags is Map<String, dynamic>
-        ? tags
-        : const <String, dynamic>{};
+    final name = data['name'] as String? ?? 'Masjid Tanpa Nama';
+    final address = data['vicinity'] as String? ?? unknownAddress;
+    final placeId = data['place_id'] as String? ?? '';
 
-    final distance = Geolocator.distanceBetween(userLatitude, userLongitude, lat, lon);
+    final distance = Geolocator.distanceBetween(
+      userLatitude,
+      userLongitude,
+      lat,
+      lon,
+    );
 
     return NearbyMosque(
-      id: '$type-$osmId',
-      name: (tagMap['name'] as String?)?.trim().isNotEmpty == true
-          ? (tagMap['name'] as String).trim()
-          : 'Masjid Tanpa Nama',
-      address: _composeAddress(tagMap),
+      id: placeId,
+      name: name,
+      address: address,
       latitude: lat,
       longitude: lon,
       distanceMeters: distance,
     );
   }
 
-  bool get hasResolvedAddress => address.trim().isNotEmpty && address != unknownAddress;
+  bool get hasResolvedAddress =>
+      address.trim().isNotEmpty && address != unknownAddress;
 
   NearbyMosque copyWith({
     String? id,
@@ -80,25 +78,5 @@ class NearbyMosque {
       return '${(distanceMeters / 1000).toStringAsFixed(2)} km';
     }
     return '${distanceMeters.toStringAsFixed(0)} m';
-  }
-
-  static String _composeAddress(Map<String, dynamic> tags) {
-    final street = (tags['addr:street'] as String?)?.trim() ?? '';
-    final suburb = (tags['addr:suburb'] as String?)?.trim() ?? '';
-    final village = (tags['addr:village'] as String?)?.trim() ?? '';
-    final city = (tags['addr:city'] as String?)?.trim() ??
-        (tags['addr:town'] as String?)?.trim() ??
-        (tags['addr:county'] as String?)?.trim() ?? '';
-
-    final segments = <String>[street, suburb, village, city]
-        .where((value) => value.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
-
-    if (segments.isEmpty) {
-      return unknownAddress;
-    }
-
-    return segments.join(', ');
   }
 }
