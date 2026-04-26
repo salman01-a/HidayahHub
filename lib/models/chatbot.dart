@@ -8,4 +8,4 @@ class ChatMessage {
     required this.isUser,
     required this.timestamp,
   });
-}
+} 
