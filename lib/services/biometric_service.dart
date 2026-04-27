@@ -22,7 +22,6 @@ class BiometricService {
         ),
       );
     } catch (e) {
-      // Jika error karena belum daftar fingerprint/faceid di HP
       print("Error Biometric: $e");
       return false;
     }

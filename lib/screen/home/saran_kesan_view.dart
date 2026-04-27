@@ -11,7 +11,7 @@ class SaranKesanView extends StatefulWidget {
 class _SaranKesanViewState extends State<SaranKesanView> {
   late final SaranKesanController _controller;
 
-  static const Color _deepTeal = Color(0xFF0F5A4E); 
+  static const Color _deepTeal = Color(0xFF0F5A4E);
   static const Color _primaryTeal = Color(0xFF1A7F6D);
   static const Color _accentGold = Color(0xFFCBA052);
   static const Color _bg = Color(0xFFF6F9FA);
@@ -32,22 +32,28 @@ class _SaranKesanViewState extends State<SaranKesanView> {
           _buildHeaderCard(),
           const SizedBox(height: 22),
 
-          _sectionHeader("Anggota Kelompok", "Mahasiswa Informatika Kelas ${_controller.kelas}"),
+          _sectionHeader(
+            "Anggota Kelompok",
+            "Mahasiswa Informatika Kelas ${_controller.kelas}",
+          ),
           const SizedBox(height: 12),
           _buildMemberCard(),
           const SizedBox(height: 24),
 
-          _sectionHeader("Ulasan Mata Kuliah", "Refleksi untuk pengembangan kurikulum"),
+          _sectionHeader(
+            "Ulasan Mata Kuliah",
+            "Refleksi untuk pengembangan kurikulum",
+          ),
           const SizedBox(height: 12),
           _buildContentCard(
-            title: "Saran Pengembangan",
+            title: "Saran",
             content: _controller.saran,
             icon: Icons.tips_and_updates_rounded,
             color: _primaryTeal,
           ),
           const SizedBox(height: 16),
           _buildContentCard(
-            title: "Kesan Belajar",
+            title: "Kesan",
             content: _controller.kesan,
             icon: Icons.volunteer_activism_rounded,
             color: _accentGold,
@@ -64,8 +70,8 @@ class _SaranKesanViewState extends State<SaranKesanView> {
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
-          end: Alignment.bottomRight,//
-          colors: [_deepTeal, _primaryTeal, Color(0xFF35A598)], 
+          end: Alignment.bottomRight, //
+          colors: [_deepTeal, _primaryTeal, Color(0xFF35A598)],
         ),
         boxShadow: [
           BoxShadow(
@@ -80,12 +86,20 @@ class _SaranKesanViewState extends State<SaranKesanView> {
         children: [
           Text(
             'Laporan Proyek',
-            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13),
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
           ),
           SizedBox(height: 4),
           Text(
             'Saran & Kesan TPM',
-            style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           SizedBox(height: 8),
           Text(
@@ -102,17 +116,21 @@ class _SaranKesanViewState extends State<SaranKesanView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          title, 
+          title,
           style: const TextStyle(
-            fontWeight: FontWeight.w900, 
-            fontSize: 19, 
-            color: _deepTeal 
-          )
+            fontWeight: FontWeight.w900,
+            fontSize: 19,
+            color: _deepTeal,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
-          subtitle, 
-          style: const TextStyle(color: Color(0xFF647377), fontSize: 13, fontWeight: FontWeight.w500)
+          subtitle,
+          style: const TextStyle(
+            color: Color(0xFF647377),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -147,19 +165,37 @@ class _SaranKesanViewState extends State<SaranKesanView> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F4F1), 
-                        borderRadius: BorderRadius.circular(14)
+                        color: const Color(0xFFE8F4F1),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.person_rounded, color: _primaryTeal, size: 22),
+                      child: const Icon(
+                        Icons.person_rounded,
+                        color: _primaryTeal,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(m['nama']!, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF24344A))),
+                          Text(
+                            m['nama']!,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: Color(0xFF24344A),
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text("NIM ${m['nim']!}", style: const TextStyle(color: Color(0xFF7F8C8D), fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text(
+                            "NIM ${m['nim']!}",
+                            style: const TextStyle(
+                              color: Color(0xFF7F8C8D),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -187,7 +223,11 @@ class _SaranKesanViewState extends State<SaranKesanView> {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: color.withOpacity(0.15)),
         boxShadow: [
-          BoxShadow(color: color.withOpacity(0.04), blurRadius: 16, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: color.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
@@ -197,17 +237,32 @@ class _SaranKesanViewState extends State<SaranKesanView> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: Icon(icon, color: color, size: 20),
               ),
               const SizedBox(width: 12),
-              Text(title, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: color)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: color,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
           Text(
             content,
-            style: const TextStyle(fontSize: 14.5, height: 1.7, color: Color(0xFF455A64), fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.7,
+              color: Color(0xFF455A64),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
