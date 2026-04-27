@@ -8,8 +8,8 @@ class SaranKesanController extends ChangeNotifier {
   ];
 
   final String saran = 
-      "Saran kami untuk mata kuliah TPM adalah agar terus mengedepankan proyek berbasis studi kasus nyata seperti ini. Integrasi dengan API eksternal dan manajemen state sangat membantu kami dalam mempersiapkan diri ke industri.";
+      "Saran kami, mungkin ke depannya beban proyek bisa lebih diseimbangkan dengan waktu yang tersedia. Proyek TPM sangat menarik dan relevan, namun cukup sulit untuk diselesaikan secara maksimal dalam waktu yang terbatas, apalagi bersamaan dengan tugas dari mata kuliah lain.";
 
   final String kesan = 
-      "Belajar di mata kuliah TPM sangat menantang namun memberikan kepuasan tersendiri. Kami belajar bagaimana membangun aplikasi yang tidak hanya fungsional secara teknis, tapi juga memiliki estetika UI/UX yang baik dan nyaman digunakan.";
+      "Kesan kami, mata kuliah TPM ini cukup menantang dan kadang terasa cukup berat. Kami dituntut untuk memahami banyak hal dalam waktu singkat. Walaupun begitu, mata kuliah ini tetap memberikan pengalaman yang sangat berguna, terutama dalam melatih kemampuan berpikir dan praktik langsung.";
 }
