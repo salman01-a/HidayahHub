@@ -17,8 +17,13 @@ class _SurahDetailViewState extends State<SurahDetailView> {
   late final SurahDetailController _controller;
 
   final ScrollController _scrollController = ScrollController();
-  final GlobalKey _targetKey = GlobalKey();
+  final Map<int, GlobalKey> _ayatKeys = <int, GlobalKey>{};
   bool _hasScrolled = false;
+  bool _scrollingInProgress = false;
+  int _scrollAttempts = 0;
+
+  static const int _maxScrollAttempts = 8;
+  static const double _estimatedItemHeight = 260;
 
   @override
   void initState() {
@@ -41,23 +46,69 @@ class _SurahDetailViewState extends State<SurahDetailView> {
     setState(() {});
   }
 
+  GlobalKey _keyForAyat(int nomorAyat) {
+    return _ayatKeys.putIfAbsent(
+      nomorAyat,
+      () => GlobalObjectKey('ayat-$nomorAyat'),
+    );
+  }
+
   void _scrollToBookmark() {
-    if (_controller.bookmarkedAyat != null && !_hasScrolled) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_targetKey.currentContext != null) {
-          Scrollable.ensureVisible(
-            _targetKey.currentContext!,
-            duration: const Duration(seconds: 1),
-            curve: Curves.easeInOut,
-          );
-          _hasScrolled = true;
-        }
-      });
+    final bookmarkedAyat = _controller.bookmarkedAyat;
+    if (bookmarkedAyat == null || _hasScrolled || _scrollingInProgress) return;
+
+    _scrollingInProgress = true;
+    _scrollAttempts = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryScrollToBookmarkedAyat(bookmarkedAyat);
+    });
+  }
+
+  Future<void> _tryScrollToBookmarkedAyat(int bookmarkedAyat) async {
+    if (!mounted) return;
+
+    final targetContext = _ayatKeys[bookmarkedAyat]?.currentContext;
+    if (targetContext != null) {
+      await Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+        alignment: 0.08,
+      );
+      if (!mounted) return;
+      _hasScrolled = true;
+      _scrollingInProgress = false;
+      return;
     }
+
+    if (_scrollAttempts >= _maxScrollAttempts || !_scrollController.hasClients) {
+      _scrollingInProgress = false;
+      return;
+    }
+
+    _scrollAttempts += 1;
+    final targetIndex = bookmarkedAyat + 1;
+    final roughOffset =
+        (targetIndex * _estimatedItemHeight)
+            .clamp(0.0, _scrollController.position.maxScrollExtent)
+            .toDouble();
+
+    await _scrollController.animateTo(
+      roughOffset,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryScrollToBookmarkedAyat(bookmarkedAyat);
+    });
   }
 
   Future<void> _reload() async {
     _hasScrolled = false;
+    _scrollingInProgress = false;
+    _scrollAttempts = 0;
     await _controller.refresh(widget.surah.nomor);
   }
 
@@ -153,7 +204,7 @@ class _SurahDetailViewState extends State<SurahDetailView> {
                     _controller.bookmarkedAyat == ayat.nomorAyat;
 
                 return _AyatCard(
-                  key: isThisBookmarked ? _targetKey : null,
+                  key: _keyForAyat(ayat.nomorAyat),
                   ayat: ayat,
                   isPlaying:
                       _controller.playingAyat == ayat.nomorAyat &&

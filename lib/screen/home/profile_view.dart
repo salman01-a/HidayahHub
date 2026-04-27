@@ -530,6 +530,10 @@ class HelpCenterSheet extends StatelessWidget {
   final String userName;
   const HelpCenterSheet({super.key, required this.userName});
 
+  static const Color _deepTeal = Color(0xFF0F5A4E);
+  static const Color _softBg = Color(0xFFF7FAF9);
+  static const Color _lineColor = Color(0xFFE1ECE8);
+
   Future<void> _launchWhatsApp(String phone) async {
     String formattedPhone = phone.startsWith('0')
         ? '62${phone.substring(1)}'
@@ -548,7 +552,7 @@ class HelpCenterSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 48),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _softBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
@@ -566,9 +570,31 @@ class HelpCenterSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          const Text(
-            'Silakan hubungi kontak berikut:',
-            style: TextStyle(color: Color(0xFF5E6D7E)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _lineColor),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.support_agent_rounded, color: _deepTeal, size: 24),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Pilih salah satu kontak berikut untuk terhubung langsung ke WhatsApp tim pengembang.',
+                    style: TextStyle(
+                      color: Color(0xFF4F5E6F),
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           _whatsappItem('Salman Faris', '085339167818'),
@@ -580,15 +606,69 @@ class HelpCenterSheet extends StatelessWidget {
   }
 
   Widget _whatsappItem(String name, String phone) {
-    return InkWell(
-      onTap: () => _launchWhatsApp(phone),
-      child: ListTile(
-        leading: const FaIcon(
-          FontAwesomeIcons.whatsapp,
-          color: Color(0xFF25D366),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => _launchWhatsApp(phone),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _lineColor),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A0F5A4E),
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFFAF3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: FaIcon(
+                    FontAwesomeIcons.whatsapp,
+                    color: Color(0xFF25D366),
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1F2E3E),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      phone,
+                      style: const TextStyle(
+                        color: Color(0xFF637282),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.open_in_new_rounded, color: _deepTeal),
+            ],
+          ),
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(phone),
       ),
     );
   }
