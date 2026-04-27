@@ -9,7 +9,6 @@ class AuthController {
 
   final _db = DBHelper.instance;
 
-  /// Register a new user. Returns map with success and message.
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,

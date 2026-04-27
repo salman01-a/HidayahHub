@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Import Image Picker
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/user.dart';

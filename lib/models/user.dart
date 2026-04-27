@@ -4,6 +4,8 @@ import 'package:crypto/crypto.dart';
 
 class UserModel {
   static const String defaultProfilePath = 'assets/profile/default.png';
+  static const String _nameCipherPrefix = 'xor:';
+  static const String _xorKey = 'HidayahHub2026';
 
   final int? id;
   final String name;
@@ -21,7 +23,7 @@ class UserModel {
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
-      'name': name,
+      'name': encodeName(name),
       'email': email,
       'password': passwordHash,
       'profilePath': profilePath,
@@ -36,11 +38,47 @@ class UserModel {
 
     return UserModel(
       id: m['id'] as int?,
-      name: m['name'] as String? ?? '',
+      name: decodeName(m['name'] as String? ?? ''),
       email: m['email'] as String? ?? '',
       passwordHash: m['password'] as String? ?? '',
       profilePath: pPath,
     );
+  }
+
+  static String encodeName(String rawName) {
+    if (rawName.isEmpty) return rawName;
+    final encryptedBytes = _xorTransform(
+      utf8.encode(rawName),
+      utf8.encode(_xorKey),
+    );
+    final payload = base64UrlEncode(encryptedBytes);
+    return '$_nameCipherPrefix$payload';
+  }
+
+  static String decodeName(String storedName) {
+    if (storedName.isEmpty) return storedName;
+    if (storedName.startsWith(_nameCipherPrefix)) {
+      final payload = storedName.substring(_nameCipherPrefix.length);
+      try {
+        final encryptedBytes = base64Url.decode(base64Url.normalize(payload));
+        final plainBytes = _xorTransform(encryptedBytes, utf8.encode(_xorKey));
+        return utf8.decode(plainBytes);
+      } catch (_) {
+        return storedName;
+      }
+    }
+
+    // Backward compatibility for usernames saved in plaintext.
+    return storedName;
+  }
+
+  static List<int> _xorTransform(List<int> source, List<int> key) {
+    if (source.isEmpty) return source;
+    final output = <int>[];
+    for (var i = 0; i < source.length; i++) {
+      output.add(source[i] ^ key[i % key.length]);
+    }
+    return output;
   }
 
   static String hashPassword(String password) {
