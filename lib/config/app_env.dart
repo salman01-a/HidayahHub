@@ -4,7 +4,12 @@ class AppEnv {
   AppEnv._();
 
   static String _read(String key, {String fallback = ''}) {
-    final value = dotenv.env[key]?.trim();
+    String? value;
+    try {
+      value = dotenv.env[key]?.trim();
+    } catch (_) {
+      return fallback;
+    }
     if (value == null || value.isEmpty) {
       return fallback;
     }

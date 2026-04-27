@@ -116,10 +116,18 @@ class DBHelper {
     final db = await database;
     final res = await db.query(
       'users',
-      where: 'name = ? AND id != ?',
-      whereArgs: [name, excludeId],
+      columns: ['name'],
+      where: 'id != ?',
+      whereArgs: [excludeId],
     );
-    return res.isNotEmpty;
+
+    for (final row in res) {
+      final storedName = row['name'] as String? ?? '';
+      if (UserModel.decodeName(storedName) == name) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

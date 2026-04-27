@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/minigames.dart';
+import 'dart:io';
 
 class NotificationService {
   NotificationService._();
@@ -23,6 +24,18 @@ class NotificationService {
       ),
     );
     await _notificationsPlugin.initialize(settings: initSettings);
+    if (Platform.isAndroid) {
+      final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      
+      await androidPlugin?.requestNotificationsPermission();
+      const minigameChannel = AndroidNotificationChannel(
+        'minigame_channel',
+        'Notifikasi Minigame',
+        description: 'Notifikasi rekor minigame HidayahHub',
+        importance: Importance.max,
+      );
+      await androidPlugin?.createNotificationChannel(minigameChannel);
+    }
   }
 
   // Fungsi untuk menjadwalkan 5 waktu sholat sekaligus

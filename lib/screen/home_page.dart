@@ -389,7 +389,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Container(
               width: 38,
-              height: 38,
+              height: 38, 
               decoration: BoxDecoration(
                 color: const Color(0xFFE6F1F9),
                 borderRadius: BorderRadius.circular(11),
