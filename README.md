@@ -1,4 +1,4 @@
-Hidayah Hub - Asisten Spiritual Digital
+Hidayah Hub
 
 **Hidayah Hub** adalah aplikasi mobile berbasis Flutter yang dirancang sebagai asisten spiritual digital terpadu. Aplikasi ini menyatukan berbagai kebutuhan ibadah esensial umat Islam ke dalam satu platform, mulai dari Al-Quran, jadwal sholat, hingga asisten berbasis AI.
 
@@ -22,7 +22,7 @@ Proyek ini disusun sebagai Tugas Akhir mata kuliah **Teknologi Pemrograman Mobil
 - **Kalkulator Zakat**: Perhitungan zakat maal otomatis dengan konversi mata uang dunia (Exchange Rate API).
 
 ### 🤖 Kecerdasan Buatan (AI)
-- **Chatbot Islami**: Asisten pintar berbasis **Google Gemini AI** yang siap menjawab pertanyaan seputar hukum Islam dan sejarah secara interaktif.
+- **Chatbot Islami**: Asisten pintar dengan mengintegrasikan Gemini AI dari Google yang siap menjawab pertanyaan seputar hukum Islam dan sejarah secara interaktif.
 
 ### 🧭 Sensor Perangkat & LBS
 - **Arah Kiblat**: Penunjuk kiblat presisi menggunakan sensor *Magnetometer* dan koordinat GPS.
