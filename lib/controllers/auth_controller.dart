@@ -34,13 +34,11 @@ class AuthController {
       if (kDebugMode) {
         print('Register error: $e\n$st');
       }
-      // Return exception message in debug to help diagnose problems.
       final msg = kDebugMode ? e.toString() : 'Gagal mendaftar';
       return {'success': false, 'message': msg};
     }
   }
 
-  /// Login with email+password. Returns map with success and optional user.
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,

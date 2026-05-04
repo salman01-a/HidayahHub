@@ -6,9 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/minigames.dart';
 import '../models/surah_detail.dart';
 import 'equran_service.dart';
+import 'session_service.dart';
 
 class MinigameService {
-  static const String _historyKey = 'minigame_score_history_v1';
+  static const String _historyKeyPrefix = 'minigame_score_history_v1';
 
   final Random _random = Random();
   final Map<int, SurahDetail> _detailCache = <int, SurahDetail>{};
@@ -52,7 +53,8 @@ class MinigameService {
 
   Future<List<MinigameScoreHistory>> loadScoreHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_historyKey);
+    final key = await _resolveHistoryKey();
+    final raw = prefs.getString(key);
     if (raw == null || raw.isEmpty) {
       return const <MinigameScoreHistory>[];
     }
@@ -77,7 +79,19 @@ class MinigameService {
       ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
 
     final trimmed = next.take(20).map((e) => e.toMap()).toList(growable: false);
-    await prefs.setString(_historyKey, jsonEncode(trimmed));
+    final key = await _resolveHistoryKey();
+    await prefs.setString(key, jsonEncode(trimmed));
+  }
+
+  Future<String> _resolveHistoryKey() async {
+    final email = await SessionService.instance.getLastEmail();
+    final normalized = (email ?? '').trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return '${_historyKeyPrefix}_guest';
+    }
+
+    final safeEmail = normalized.replaceAll(RegExp(r'[^a-z0-9@._-]'), '_');
+    return '${_historyKeyPrefix}_$safeEmail';
   }
 
   Future<SurahDetail> _getSurahDetailCached(int surahNumber) async {

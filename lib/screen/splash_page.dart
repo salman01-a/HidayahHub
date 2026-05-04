@@ -34,21 +34,16 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Kontroller utama untuk urutan masuk (Intro)
     _introController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2800),
     )..forward();
 
-    // Kontroller untuk efek melayang (Ambient) pada background
     _ambientController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 4000),
     )..repeat(reverse: true);
 
-    // --- Definisi Tweens dengan Interval ---
-
-    // 1. Logo muncul duluan (0% - 50%)
     _logoScale = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(
         parent: _introController,
@@ -62,7 +57,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       ),
     );
 
-    // 2. Judul & Slogan (30% - 70%)
     _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _introController,
@@ -76,7 +70,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       ),
     );
 
-    // 3. Progress Bar muncul (60% - 85%)
     _progressOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _introController,
@@ -84,7 +77,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       ),
     );
 
-    // 4. Tombol Masuk muncul terakhir (85% - 100%)
     _buttonOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _introController,
@@ -138,7 +130,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Definisi Warna Tema
     const Color deepTeal = Color(0xFF0F5A4E);
     const Color oceanTeal = Color(0xFF177868);
     const Color mintGlow = Color(0xFF7FE3CC);
@@ -148,12 +139,10 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       body: AnimatedBuilder(
         animation: Listenable.merge([_introController, _ambientController]),
         builder: (context, child) {
-          // Efek gerak lambat untuk background orbs
           final drift = sin(_ambientController.value * pi * 2) * 15;
 
           return Stack(
             children: [
-              // 1. Background Gradient
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -164,7 +153,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                 ),
               ),
 
-              // 2. Decorative Ambient Orbs
               Positioned(
                 top: -100 + drift,
                 left: -70,
@@ -176,7 +164,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                 child: _GlowOrb(size: 240, color: elegantGold.withOpacity(0.15)),
               ),
 
-              // 3. Main Content
+              // Main Content
               SafeArea(
                 child: Center(
                   child: Padding(
@@ -184,7 +172,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Logo Area
                         Opacity(
                           opacity: _logoOpacity.value,
                           child: Transform.scale(
@@ -195,7 +182,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
                         const SizedBox(height: 40),
 
-                        // Title & Slogan Area
                         FadeTransition(
                           opacity: _titleOpacity,
                           child: SlideTransition(
@@ -206,20 +192,17 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
                         const SizedBox(height: 60),
 
-                        // Animated Bottom Section (Switching between Progress and Button)
                         SizedBox(
                           height: 60,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              // Progress Bar: Muncul selama intro, lalu memudar
                               if (_introController.value < 0.9)
                                 Opacity(
                                   opacity: _progressOpacity.value,
                                   child: _buildProgressBar(elegantGold),
                                 ),
 
-                              // Tombol Masuk: Muncul setelah progress selesai
                               if (_introController.value > 0.8)
                                 Opacity(
                                   opacity: _buttonOpacity.value,
