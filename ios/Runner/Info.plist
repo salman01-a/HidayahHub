@@ -70,6 +70,10 @@
 		<string>Aplikasi memerlukan Face ID untuk login cepat.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Aplikasi memerlukan kamera untuk tampilan penunjuk arah kiblat.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Aplikasi memerlukan akses mikrofon untuk pencarian suara.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Aplikasi memerlukan akses pengenalan suara untuk pencarian surah dan doa.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Aplikasi memerlukan lokasi agar arah kiblat lebih akurat.</string>
 		<key>GoogleMapsApiKey</key>

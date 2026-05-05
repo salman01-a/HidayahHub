@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../controllers/search_surah_controller.dart';
 import '../../models/surah.dart';
@@ -14,6 +16,10 @@ class SearchSurahView extends StatefulWidget {
 class _SearchSurahViewState extends State<SearchSurahView> {
   late final SearchSurahController _controller;
   final TextEditingController _searchController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+  String _lastWords = '';
 
   @override
   void initState() {
@@ -23,14 +29,64 @@ class _SearchSurahViewState extends State<SearchSurahView> {
     _searchController.addListener(
       () => _controller.setQuery(_searchController.text),
     );
+    _initSpeech();
   }
 
   @override
   void dispose() {
+    _speech.cancel();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    _speechAvailable = await _speech.initialize(
+      onStatus: _onSpeechStatus,
+      onError: _onSpeechError,
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onSpeechStatus(String status) {
+    if (!mounted) return;
+    if (status == 'done' || status == 'notListening') {
+      setState(() => _isListening = false);
+    }
+  }
+
+  void _onSpeechError(SpeechRecognitionError error) {
+    if (!mounted) return;
+    setState(() => _isListening = false);
+  }
+
+  Future<void> _startListening() async {
+    if (!_speechAvailable || _isListening) return;
+    setState(() => _isListening = true);
+    await _speech.listen(
+      localeId: 'id_ID',
+      listenMode: ListenMode.search,
+      partialResults: true,
+      cancelOnError: true,
+      onResult: (result) {
+        final words = result.recognizedWords.trim();
+        if (words.isEmpty) return;
+        _lastWords = words;
+        _searchController.text = words;
+        _searchController.selection = TextSelection.fromPosition(
+          TextPosition(offset: words.length),
+        );
+      },
+    );
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() => _isListening = false);
   }
 
   void _onControllerChanged() {
@@ -48,6 +104,19 @@ class _SearchSurahViewState extends State<SearchSurahView> {
             controller: _searchController,
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                tooltip: _speechAvailable
+                    ? (_isListening
+                        ? 'Berhenti mendengarkan'
+                        : 'Cari dengan suara')
+                    : 'Pengenalan suara tidak tersedia',
+                onPressed:
+                    _speechAvailable ? (_isListening ? _stopListening : _startListening) : null,
+                icon: Icon(
+                  _isListening ? Icons.mic : Icons.mic_none,
+                  color: _isListening ? Colors.redAccent : null,
+                ),
+              ),
               hintText: 'Cari surah (nama latin/arab/arti/nomor)',
               filled: true,
               fillColor: Colors.white,
@@ -58,6 +127,17 @@ class _SearchSurahViewState extends State<SearchSurahView> {
             ),
           ),
         ),
+        if (_lastWords.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Terakhir didengar: $_lastWords',
+                style: const TextStyle(color: Color(0xFF6B7A8A), fontSize: 12),
+              ),
+            ),
+          ),
         Expanded(
           child: FutureBuilder<List<Surah>>(
             future: _controller.surahFuture,
