@@ -26,6 +26,13 @@ class HomeController extends ChangeNotifier {
       availableNow: true,
     ),
     HomeFeature(
+      title: 'Hadis Shahih',
+      icon: Icons.library_books_rounded,
+      color: Color(0xFF1A7F6D),
+      action: HomeFeatureAction.hadisShahih,
+      availableNow: true,
+    ),
+    HomeFeature(
       title: 'Terakhir Dibaca',
       icon: Icons.bookmark_rounded,
       color: Color(0xFF6D72D7),

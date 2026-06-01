@@ -42,6 +42,9 @@ class AppEnv {
     fallback: 'https://api.exchangerate-api.com/v4/latest/IDR',
   );
 
+  static String get hadithBaseUrl =>
+      _read('HADITH_BASE_URL', fallback: 'https://api.hadith.gading.dev');
+
   static String get geminiApiKey => _read('GEMINI_API_KEY');
 
   static String get googleMapsApiKey => _read('GOOGLE_MAPS_API_KEY');

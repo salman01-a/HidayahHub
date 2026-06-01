@@ -5,6 +5,7 @@ import 'package:hidayahhub/screen/home/zakat_view.dart';
 import '../controllers/home_controller.dart';
 import 'home/dashboard_view.dart';
 import 'home/doa_view.dart';
+import 'home/hadith_view.dart';
 import 'home/home_feature.dart';
 import 'home/profile_view.dart';
 import 'home/quran_view.dart';
@@ -103,6 +104,9 @@ class _HomePageState extends State<HomePage> {
         break;
       case HomeFeatureAction.bukaDoa:
         _openFeaturePage('Kumpulan Doa', const DoaView());
+        break;
+      case HomeFeatureAction.hadisShahih:
+        _openFeaturePage('Hadis Shahih', const HadithView());
         break;
       case HomeFeatureAction.terakhirDibaca:
         _openFeaturePage('Terakhir Dibaca', const LastReadView());
@@ -389,7 +393,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Container(
               width: 38,
-              height: 38, 
+              height: 38,
               decoration: BoxDecoration(
                 color: const Color(0xFFE6F1F9),
                 borderRadius: BorderRadius.circular(11),

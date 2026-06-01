@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../services/zakat_service.dart';
 
 class ZakatController extends ChangeNotifier {
+  static const double nisabGoldGrams = 85;
+  static const double defaultGoldPricePerGramIdr = 1500000;
+
   bool isLoading = true;
   String? error;
 
@@ -9,9 +12,14 @@ class ZakatController extends ChangeNotifier {
   List<String> availableCurrencies = ['IDR'];
 
   String selectedCurrency = 'IDR';
+  double goldPricePerGramIdr = defaultGoldPricePerGramIdr;
   double totalHartaIdr = 0;
+  double nisabIdr = nisabGoldGrams * defaultGoldPricePerGramIdr;
   double zakatIdr = 0;
   double convertedZakat = 0;
+
+  bool get hasReachedNisab =>
+      goldPricePerGramIdr > 0 && totalHartaIdr >= nisabIdr;
 
   void initialize() async {
     try {
@@ -37,13 +45,15 @@ class ZakatController extends ChangeNotifier {
   }
 
   void calculateZakat(String inputAmount) {
-    // Hilangkan karakter selain angka
-    final cleanInput = inputAmount.replaceAll(RegExp(r'[^0-9]'), '');
-    totalHartaIdr = double.tryParse(cleanInput) ?? 0;
+    totalHartaIdr = _parseRupiahInput(inputAmount);
+    _recalculateZakat();
+    notifyListeners();
+  }
 
-    // Zakat Maal adalah 2.5%
-    zakatIdr = totalHartaIdr * 0.025;
-    _updateConvertedZakat();
+  void setGoldPricePerGram(String inputAmount) {
+    goldPricePerGramIdr = _parseRupiahInput(inputAmount);
+    nisabIdr = nisabGoldGrams * goldPricePerGramIdr;
+    _recalculateZakat();
     notifyListeners();
   }
 
@@ -51,6 +61,16 @@ class ZakatController extends ChangeNotifier {
     selectedCurrency = currency;
     _updateConvertedZakat();
     notifyListeners();
+  }
+
+  double _parseRupiahInput(String inputAmount) {
+    final cleanInput = inputAmount.replaceAll(RegExp(r'[^0-9]'), '');
+    return double.tryParse(cleanInput) ?? 0;
+  }
+
+  void _recalculateZakat() {
+    zakatIdr = hasReachedNisab ? totalHartaIdr * 0.025 : 0;
+    _updateConvertedZakat();
   }
 
   void _updateConvertedZakat() {
