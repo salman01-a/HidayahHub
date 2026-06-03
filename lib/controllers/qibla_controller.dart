@@ -86,7 +86,9 @@ class QiblaController extends ChangeNotifier {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       currentLatitude = position.latitude;
       currentLongitude = position.longitude;

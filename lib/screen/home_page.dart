@@ -12,6 +12,7 @@ import 'home/last_read_view.dart';
 import 'home/nearby_mosque_view.dart';
 import 'home/saran_kesan_view.dart';
 import 'home/shake_surah_view.dart';
+import 'home/tafsir_view.dart';
 import 'home/time_conversion_view.dart';
 import 'home/qibla_view.dart';
 import 'login_page.dart';
@@ -103,6 +104,9 @@ class _HomePageState extends State<HomePage> {
         break;
       case HomeFeatureAction.bukaDoa:
         _openFeaturePage('Kumpulan Doa', const DoaView());
+        break;
+      case HomeFeatureAction.bukaTafsir:
+        _openFeaturePage('Tafsir Al Quran', const TafsirView());
         break;
       case HomeFeatureAction.terakhirDibaca:
         _openFeaturePage('Terakhir Dibaca', const LastReadView());

@@ -597,7 +597,7 @@ class HelpCenterSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _whatsappItem('Salman Faris', '085339167818'),
+          _whatsappItem('Muhammad Syahrial Abidin', '082217851300'),
           const SizedBox(height: 14),
           _whatsappItem('Reza Rasendriya Adi Putra', '081227213841'),
         ],

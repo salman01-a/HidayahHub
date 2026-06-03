@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class SaranKesanController extends ChangeNotifier {
-  final String kelas = "IF-A";
+  final String kelas = "IF-E";
   final List<Map<String, String>> anggota = [
-    {"nama": "Salman Faris", "nim": "123230024"},
+    {"nama": "Muhammad Syahrial Abidin", "nim": "123230027"},
     {"nama": "Reza Rasendriya Adi Putra", "nim": "123230030"},
   ];
 
