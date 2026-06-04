@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
-import 'package:latlong2/latlong.dart' as ll;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../controllers/nearby_mosque_controller.dart';
 import '../../models/nearby_mosque.dart';
@@ -16,10 +16,10 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
   static const Color _primaryTeal = Color(0xFF1A7F6D);
   static const Color _deepTeal = Color(0xFF0F5A4E);
   static const Color _bg = Color(0xFFF6F9FA);
-  static const gmaps.LatLng _fallbackCenter = gmaps.LatLng(-7.7956, 110.3695);
+  static const LatLng _fallbackCenter = LatLng(-7.7956, 110.3695);
 
   late final NearbyMosqueController _controller;
-  gmaps.GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -33,6 +33,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
   void dispose() {
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -42,7 +43,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     final lat = _controller.userLatitude;
     final lon = _controller.userLongitude;
     if (!_controller.navigationActive && lat != null && lon != null) {
-      _moveCamera(gmaps.LatLng(lat, lon), _preferredZoom());
+      _moveCamera(LatLng(lat, lon), _preferredZoom());
     }
 
     setState(() {});
@@ -52,7 +53,6 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
   Widget build(BuildContext context) {
     final hasData = _controller.mosques.isNotEmpty;
     final center = _currentCenter();
-    final mapMarkers = _buildMapMarkers();
     final hasActiveNavigation = _controller.navigationActive;
 
     return Scaffold(
@@ -68,30 +68,50 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(22),
-                  child: gmaps.GoogleMap(
-                    initialCameraPosition: gmaps.CameraPosition(
-                      target: center,
-                      zoom: _preferredZoom(),
-                    ),
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                    },
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    compassEnabled: true,
-                    rotateGesturesEnabled: false,
-                    circles: {
-                      gmaps.Circle(
-                        circleId: const gmaps.CircleId('radius_circle'),
-                        center: center,
-                        radius: _controller.radiusMeters.toDouble(),
-                        fillColor: _primaryTeal.withValues(alpha: 0.14),
-                        strokeWidth: 2,
-                        strokeColor: _primaryTeal.withValues(alpha: 0.55),
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: center,
+                      initialZoom: _preferredZoom(),
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                       ),
-                    },
-                    markers: mapMarkers,
-                    polylines: _buildPolylines(),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.hidayahhub',
+                        maxZoom: 19,
+                      ),
+                      // Lingkaran radius pencarian
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: center,
+                            radius: _controller.radiusMeters.toDouble(),
+                            useRadiusInMeter: true,
+                            color: _primaryTeal.withValues(alpha: 0.14),
+                            borderStrokeWidth: 2,
+                            borderColor:
+                                _primaryTeal.withValues(alpha: 0.55),
+                          ),
+                        ],
+                      ),
+                      // Polyline rute navigasi
+                      if (_controller.activeRoute.isNotEmpty)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _controller.activeRoute,
+                              strokeWidth: 5,
+                              color: const Color(0xFF1F8D7A),
+                            ),
+                          ],
+                        ),
+                      // Markers
+                      MarkerLayer(markers: _buildMapMarkers()),
+                    ],
                   ),
                 ),
                 if (_controller.loading)
@@ -149,7 +169,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
                       final lat = _controller.userLatitude;
                       final lon = _controller.userLongitude;
                       if (lat != null && lon != null) {
-                        _moveCamera(gmaps.LatLng(lat, lon), 16.0);
+                        _moveCamera(LatLng(lat, lon), 16.0);
                       }
                     },
                     child: const Icon(Icons.my_location, color: _primaryTeal),
@@ -182,7 +202,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 itemCount: _controller.mosques.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final mosque = _controller.mosques[index];
                   return SizedBox(width: 280, child: _buildMosqueCard(mosque));
@@ -194,18 +214,18 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     );
   }
 
-  gmaps.LatLng _currentCenter() {
+  LatLng _currentCenter() {
     final lat = _controller.userLatitude;
     final lon = _controller.userLongitude;
     if (lat == null || lon == null) return _fallbackCenter;
-    return gmaps.LatLng(lat, lon);
+    return LatLng(lat, lon);
   }
 
   double _preferredZoom() {
     switch (_controller.radiusMeters) {
       case 1000:
         return 14.2;
-      case 2000: // tambahan untuk radius 2 km
+      case 2000:
         return 13.6;
       case 3000:
         return 13.0;
@@ -216,50 +236,69 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     }
   }
 
-  Set<gmaps.Polyline> _buildPolylines() {
-    if (_controller.activeRoute.isEmpty) return const {};
+  List<Marker> _buildMapMarkers() {
+    final markers = <Marker>[];
 
-    return {
-      gmaps.Polyline(
-        polylineId: const gmaps.PolylineId('active_route'),
-        points: _controller.activeRoute
-            .map((p) => gmaps.LatLng(p.latitude, p.longitude))
-            .toList(growable: false),
-        width: 5,
-        color: const Color(0xFF1F8D7A),
-      ),
-    };
-  }
-
-  Set<gmaps.Marker> _buildMapMarkers() {
-    final markers = <gmaps.Marker>{};
-
+    // Marker lokasi pengguna
     final userLat = _controller.userLatitude;
     final userLon = _controller.userLongitude;
     if (userLat != null && userLon != null) {
       markers.add(
-        gmaps.Marker(
-          markerId: const gmaps.MarkerId('user_location'),
-          position: gmaps.LatLng(userLat, userLon),
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            gmaps.BitmapDescriptor.hueAzure,
+        Marker(
+          point: LatLng(userLat, userLon),
+          width: 36,
+          height: 36,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2196F3),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.person, color: Colors.white, size: 18),
           ),
         ),
       );
     }
 
+    // Markers masjid
     for (final mosque in _controller.mosques) {
       final isSelected = _controller.activeDestination?.id == mosque.id;
 
       markers.add(
-        gmaps.Marker(
-          markerId: gmaps.MarkerId('mosque_${mosque.id}'),
-          position: gmaps.LatLng(mosque.latitude, mosque.longitude),
-          onTap: () => _startInAppNavigation(mosque),
-          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
-            isSelected
-                ? gmaps.BitmapDescriptor.hueOrange
-                : gmaps.BitmapDescriptor.hueGreen,
+        Marker(
+          point: LatLng(mosque.latitude, mosque.longitude),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _startInAppNavigation(mosque),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFFFF9800)
+                    : const Color(0xFF4CAF50),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.mosque_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
           ),
         ),
       );
@@ -282,7 +321,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     }
 
     // Initial focus stays on current user location when navigation starts.
-    _moveCamera(gmaps.LatLng(userLat, userLon), 16.5);
+    _moveCamera(LatLng(userLat, userLon), 16.5);
     await _controller.startNavigation(mosque);
 
     if (!mounted) return;
@@ -291,21 +330,12 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
     }
   }
 
-  Future<void> _moveCamera(gmaps.LatLng target, double zoom) async {
-    final map = _mapController;
-    if (map == null) return;
-    await map.animateCamera(
-      gmaps.CameraUpdate.newCameraPosition(
-        gmaps.CameraPosition(target: target, zoom: zoom),
-      ),
-    );
+  void _moveCamera(LatLng target, double zoom) {
+    _mapController.move(target, zoom);
   }
 
-  Future<void> _fitCameraToRoute(List<ll.LatLng> route) async {
+  void _fitCameraToRoute(List<LatLng> route) {
     if (route.isEmpty) return;
-
-    final map = _mapController;
-    if (map == null) return;
 
     var minLat = route.first.latitude;
     var maxLat = route.first.latitude;
@@ -328,12 +358,14 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
       minLng -= 0.0005;
     }
 
-    final bounds = gmaps.LatLngBounds(
-      southwest: gmaps.LatLng(minLat, minLng),
-      northeast: gmaps.LatLng(maxLat, maxLng),
+    final bounds = LatLngBounds(
+      LatLng(minLat, minLng),
+      LatLng(maxLat, maxLng),
     );
 
-    await map.animateCamera(gmaps.CameraUpdate.newLatLngBounds(bounds, 64));
+    _mapController.fitCamera(
+      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(64)),
+    );
   }
 
   void _stopInAppNavigation() {
@@ -393,7 +425,7 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
             ),
           ),
           IconButton(
-            onPressed: () => _moveCamera(gmaps.LatLng(userLat, userLon), 16.5),
+            onPressed: () => _moveCamera(LatLng(userLat, userLon), 16.5),
             icon: const Icon(Icons.my_location_rounded, color: Colors.white),
             tooltip: 'Fokus ke saya',
           ),
@@ -442,8 +474,8 @@ class _NearbyMosqueViewState extends State<NearbyMosqueView> {
             spacing: 8,
             children: [
               _radiusChip(1000),
-              _radiusChip(2000), // ubah dari 3000 menjadi 2000
-              _radiusChip(3000), // ubah dari 5000 menjadi 3000
+              _radiusChip(2000),
+              _radiusChip(3000),
             ],
           ),
           const SizedBox(height: 10),

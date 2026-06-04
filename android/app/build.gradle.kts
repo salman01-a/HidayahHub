@@ -7,7 +7,6 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
-val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
 plugins {
     id("com.android.application")
@@ -42,7 +41,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {

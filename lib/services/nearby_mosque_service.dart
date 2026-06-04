@@ -9,45 +9,54 @@ class NearbyMosqueService {
   NearbyMosqueService._();
   static final NearbyMosqueService instance = NearbyMosqueService._();
 
-  /// Mencari masjid menggunakan Google Places API
   Future<List<NearbyMosque>> getNearbyMosques({
     required double latitude,
     required double longitude,
     int radiusMeters = 3000,
     int limit = 20,
   }) async {
-    final apiKey = AppEnv.googleMapsApiKey;
+    // Overpass QL: cari amenity=place_of_worship dengan religion=muslim
+    // dalam radius tertentu dari koordinat pengguna.
+    // "out center" agar way/relation juga punya titik tengah.
+    final query = '''
+[out:json][timeout:15];
+(
+  node["amenity"="place_of_worship"]["religion"="muslim"]
+    (around:$radiusMeters,$latitude,$longitude);
+  way["amenity"="place_of_worship"]["religion"="muslim"]
+    (around:$radiusMeters,$latitude,$longitude);
+  relation["amenity"="place_of_worship"]["religion"="muslim"]
+    (around:$radiusMeters,$latitude,$longitude);
+);
+out center body;
+''';
 
-    final uri = Uri.parse(
-      'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-      '?location=$latitude,$longitude'
-      '&radius=$radiusMeters'
-      '&type=mosque'
-      '&key=$apiKey',
-    );
-
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final uri = Uri.parse(AppEnv.overpassUrl);
+    final response = await http
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+            'User-Agent': 'HidayahHub/1.0',
+          },
+          body: 'data=${Uri.encodeComponent(query)}',
+        )
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200) {
       throw Exception(
-        'Gagal menghubungi Google Maps API (${response.statusCode})',
+        'Gagal menghubungi Overpass API (${response.statusCode})',
       );
     }
 
-    final decoded = jsonDecode(response.body);
-    final status = decoded['status'] as String?;
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final elements = decoded['elements'] as List<dynamic>? ?? [];
 
-    if (status != 'OK' && status != 'ZERO_RESULTS') {
-      throw Exception('Error dari Google Maps: $status');
-    }
-
-    final results = decoded['results'] as List<dynamic>? ?? [];
     final mosques = <NearbyMosque>[];
-
-    for (final raw in results) {
+    for (final raw in elements) {
       if (raw is! Map<String, dynamic>) continue;
       try {
-        final item = NearbyMosque.fromGooglePlaces(
+        final item = NearbyMosque.fromOverpass(
           raw,
           userLatitude: latitude,
           userLongitude: longitude,
@@ -58,6 +67,8 @@ class NearbyMosqueService {
       }
     }
 
+    await _resolveAddresses(mosques, max: 5);
+
     mosques.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
 
     return mosques.length <= limit
@@ -65,19 +76,53 @@ class NearbyMosqueService {
         : mosques.take(limit).toList(growable: false);
   }
 
-  /// Mengambil rute jalan kaki menggunakan Google Directions API
+  /// Reverse-geocode alamat menggunakan Nominatim (gratis, courtesy limit)
+  Future<void> _resolveAddresses(List<NearbyMosque> mosques, {int max = 5}) async {
+    int resolved = 0;
+    for (int i = 0; i < mosques.length && resolved < max; i++) {
+      if (mosques[i].hasResolvedAddress) continue;
+
+      try {
+        final uri = Uri.parse(
+          '${AppEnv.nominatimReverseUrl}'
+          '?lat=${mosques[i].latitude}'
+          '&lon=${mosques[i].longitude}'
+          '&format=json'
+          '&zoom=18'
+          '&addressdetails=1',
+        );
+
+        final resp = await http.get(
+          uri,
+          headers: {'User-Agent': 'HidayahHub/1.0'},
+        ).timeout(const Duration(seconds: 8));
+
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body) as Map<String, dynamic>;
+          final displayName = data['display_name'] as String?;
+          if (displayName != null && displayName.trim().isNotEmpty) {
+            mosques[i] = mosques[i].copyWith(address: displayName);
+            resolved++;
+          }
+        }
+      } catch (_) {
+        // Skip — alamat tetap dari tags OSM
+      }
+    }
+  }
+
+  /// Mengambil rute jalan kaki menggunakan OSRM 
   Future<NearbyRoute> getRoadRoute({
     required LatLng start,
     required LatLng destination,
   }) async {
-    final apiKey = AppEnv.googleMapsApiKey;
+    final baseUrl = AppEnv.osrmRouteBaseUrl.replaceFirst('/driving', '/foot');
 
     final uri = Uri.parse(
-      'https://maps.googleapis.com/maps/api/directions/json'
-      '?origin=${start.latitude},${start.longitude}'
-      '&destination=${destination.latitude},${destination.longitude}'
-      '&mode=walking'
-      '&key=$apiKey',
+      '$baseUrl/'
+      '${start.longitude},${start.latitude}'
+      ';${destination.longitude},${destination.latitude}'
+      '?overview=full&geometries=polyline&steps=false',
     );
 
     final response = await http.get(uri).timeout(const Duration(seconds: 15));
@@ -87,21 +132,20 @@ class NearbyMosqueService {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final status = data['status'] as String?;
+    final code = data['code'] as String?;
 
-    if (status != 'OK') {
-      throw Exception('Rute tidak ditemukan (Status: $status)');
+    if (code != 'Ok') {
+      throw Exception('Rute tidak ditemukan (Status: $code)');
     }
 
     final route =
         (data['routes'] as List<dynamic>).first as Map<String, dynamic>;
-    final leg = (route['legs'] as List<dynamic>).first as Map<String, dynamic>;
 
-    final distanceMeters = (leg['distance']['value'] as num?)?.toDouble() ?? 0;
-    final durationSeconds = (leg['duration']['value'] as num?)?.toDouble() ?? 0;
-    final encodedPolyline = route['overview_polyline']['points'] as String;
+    final distanceMeters = (route['distance'] as num?)?.toDouble() ?? 0;
+    final durationSeconds = (route['duration'] as num?)?.toDouble() ?? 0;
+    final encodedGeometry = route['geometry'] as String;
 
-    final routePoints = _decodePolyline(encodedPolyline);
+    final routePoints = _decodePolyline(encodedGeometry);
 
     return NearbyRoute(
       points: routePoints,
