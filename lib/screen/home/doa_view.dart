@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../controllers/doa_controller.dart';
 import '../../models/doa.dart';
@@ -14,6 +16,10 @@ class DoaView extends StatefulWidget {
 class _DoaViewState extends State<DoaView> {
   late final DoaController _controller;
   final TextEditingController _searchController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
+  bool _speechAvailable = false;
+  bool _isListening = false;
+  String _lastWords = '';
 
   // Palette Hidayah Hub
   static const Color primaryTeal = Color(0xFF1A7F6D);
@@ -23,14 +29,65 @@ class _DoaViewState extends State<DoaView> {
     super.initState();
     _controller = DoaController();
     _controller.addListener(_onControllerChanged);
+    _initSpeech();
   }
 
   @override
   void dispose() {
+    _speech.cancel();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    _speechAvailable = await _speech.initialize(
+      onStatus: _onSpeechStatus,
+      onError: _onSpeechError,
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onSpeechStatus(String status) {
+    if (!mounted) return;
+    if (status == 'done' || status == 'notListening') {
+      setState(() => _isListening = false);
+    }
+  }
+
+  void _onSpeechError(SpeechRecognitionError error) {
+    if (!mounted) return;
+    setState(() => _isListening = false);
+  }
+
+  Future<void> _startListening() async {
+    if (!_speechAvailable || _isListening) return;
+    setState(() => _isListening = true);
+    await _speech.listen(
+      localeId: 'id_ID',
+      listenMode: ListenMode.search,
+      partialResults: true,
+      cancelOnError: true,
+      onResult: (result) {
+        final words = result.recognizedWords.trim();
+        if (words.isEmpty) return;
+        _lastWords = words;
+        _searchController.text = words;
+        _searchController.selection = TextSelection.fromPosition(
+          TextPosition(offset: words.length),
+        );
+        _controller.setQuery(words);
+      },
+    );
+  }
+
+  Future<void> _stopListening() async {
+    if (!_isListening) return;
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() => _isListening = false);
   }
 
   void _onControllerChanged() {
@@ -74,6 +131,10 @@ class _DoaViewState extends State<DoaView> {
                   current: filtered.length,
                   searchController: _searchController,
                   onChanged: _controller.setQuery,
+                  speechAvailable: _speechAvailable,
+                  isListening: _isListening,
+                  lastWords: _lastWords,
+                  onMicPressed: _isListening ? _stopListening : _startListening,
                 );
               }
 
@@ -92,12 +153,20 @@ class _DoaHeader extends StatelessWidget {
   final int current;
   final TextEditingController searchController;
   final ValueChanged<String> onChanged;
+  final bool speechAvailable;
+  final bool isListening;
+  final String lastWords;
+  final VoidCallback onMicPressed;
 
   const _DoaHeader({
     required this.total,
     required this.current,
     required this.searchController,
     required this.onChanged,
+    required this.speechAvailable,
+    required this.isListening,
+    required this.lastWords,
+    required this.onMicPressed,
   });
 
   @override
@@ -164,6 +233,16 @@ class _DoaHeader extends StatelessWidget {
               Icons.search_rounded,
               color: Color(0xFF1A7F6D),
             ),
+            suffixIcon: IconButton(
+              tooltip: speechAvailable
+                  ? (isListening ? 'Berhenti mendengarkan' : 'Cari dengan suara')
+                  : 'Pengenalan suara tidak tersedia',
+              onPressed: speechAvailable ? onMicPressed : null,
+              icon: Icon(
+                isListening ? Icons.mic : Icons.mic_none,
+                color: isListening ? Colors.redAccent : const Color(0xFF1A7F6D),
+              ),
+            ),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -173,6 +252,13 @@ class _DoaHeader extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
         ),
+        if (lastWords.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Terakhir didengar: $lastWords',
+            style: const TextStyle(color: Color(0xFF6B7A8A), fontSize: 12),
+          ),
+        ],
       ],
     );
   }

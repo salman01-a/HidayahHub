@@ -261,7 +261,7 @@ class DashboardController extends ChangeNotifier {
     final m = int.tryParse(parts[1]) ?? 0;
     return TimeOfDay(hour: h.clamp(0, 23), minute: m.clamp(0, 59));
   }
-
+  
   String countdown(DateTime now, DateTime next) {
     final d = next.difference(now);
     return '${d.inHours}h ${d.inMinutes.remainder(60)}m ${d.inSeconds.remainder(60)}s';
