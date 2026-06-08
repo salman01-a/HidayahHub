@@ -12,7 +12,6 @@ import 'home/quran_view.dart';
 import 'home/last_read_view.dart';
 import 'home/nearby_mosque_view.dart';
 import 'home/saran_kesan_view.dart';
-import 'home/shake_surah_view.dart';
 import 'home/time_conversion_view.dart';
 import 'home/qibla_view.dart';
 import 'login_page.dart';
@@ -167,9 +166,9 @@ class _HomePageState extends State<HomePage> {
           context,
         ).push(MaterialPageRoute(builder: (_) => const QiblaView()));
         break;
-      case HomeFeatureAction.shakeSurah:
-        _openFeaturePage('Shake Surah', const ShakeSurahView());
-        break;
+      // case HomeFeatureAction.shakeSurah:
+      //   _openFeaturePage('Shake Surah', const ShakeSurahView());
+      //   break;
       case HomeFeatureAction.miniGames:
         _openFeaturePage('Minigames Sambung Ayat', const MinigameView());
         break;

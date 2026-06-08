@@ -11,7 +11,7 @@ enum HomeFeatureAction {
   jadwalDunia,
   masjidTerdekat,
   arahKiblat,
-  shakeSurah,
+  // shakeSurah,
   miniGames,
   // notifSholat,
 }

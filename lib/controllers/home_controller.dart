@@ -58,7 +58,7 @@ class HomeController extends ChangeNotifier {
       icon: Icons.volunteer_activism_outlined,
       color: Color(0xFFF08B4A),
       action: HomeFeatureAction.zakatDonasi,
-      availableNow: false,
+      availableNow: true,
     ),
     HomeFeature(
       title: 'Cari Masjid',
@@ -74,13 +74,13 @@ class HomeController extends ChangeNotifier {
       action: HomeFeatureAction.arahKiblat,
       availableNow: true,
     ),
-    HomeFeature(
-      title: 'Shake Surah',
-      icon: Icons.vibration_rounded,
-      color: Color(0xFF4B8AC2),
-      action: HomeFeatureAction.shakeSurah,
-      availableNow: true,
-    ),
+    // HomeFeature(
+    //   title: 'Shake Surah',
+    //   icon: Icons.vibration_rounded,
+    //   color: Color(0xFF4B8AC2),
+    //   action: HomeFeatureAction.shakeSurah,
+    //   availableNow: true,
+    // ),
     HomeFeature(
       title: 'Minigames Ayat',
       icon: Icons.extension_outlined,
